@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "expo": {
+      "type": "http",
+      "url": "https://mcp.expo.dev/mcp"
+    },
+    "playwright": {
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.76"
+      ],
+      "command": "npx"
+    },
+    "terreno": {
+      "type": "http",
+      "url": "https://mcp.terreno.app/mcp"
+    },
+    "terreno-local": {
+      "args": [
+        "terreno-mcp-local"
+      ],
+      "command": "bunx"
+    }
+  }
+}

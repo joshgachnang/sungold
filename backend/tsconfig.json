@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "esnext"
+    ],
+    "module": "preserve",
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "esnext",
+    "types": [
+      "bun"
+    ],
+    "verbatimModuleSyntax": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "include": [
+    "src"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@reduxjs/toolkit": "^2.11.1",
+    "@sentry/react": "^10.29.0",
+    "@terreno/admin-frontend": "^57.6.1",
+    "@terreno/rtk": "^57.6.1",
+    "@terreno/syncdb": "^57.6.1",
+    "@terreno/ui": "^57.6.1",
+    "expo": "~57.0.14",
+    "expo-constants": "~57.0.12",
+    "expo-router": "~57.0.14",
+    "expo-sqlite": "~57.0.1",
+    "lodash": "^4.18.1",
+    "luxon": "^3.7.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-reanimated": "4.5.1",
+    "react-redux": "^9.2.0",
+    "redux-persist": "^6.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.6",
+    "@playwright/test": "^1.58.2",
+    "@rtk-query/codegen-openapi": "^2.2.0",
+    "@types/bun": "^1.4.0",
+    "@types/lodash": "^4.17.17",
+    "@types/luxon": "^3.7.1",
+    "@types/react": "~19.2.14",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.12",
+    "typescript": "~6.0.3"
+  },
+  "main": "expo-router/entry",
+  "name": "@sungold/frontend",
+  "private": true,
+  "scripts": {
+    "android": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --android --port 8082",
+    "compile": "tsc",
+    "ios": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --ios --port 8082",
+    "lint": "bun biome check .",
+    "lint:fix": "bun biome check --write .",
+    "lint:unsafefix": "biome check --write . --unsafe",
+    "sdk": "bun scripts/generate-sdk.ts && bun biome check --write scripts/generate-sdk.ts",
+    "start": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --port 8082",
+    "test": "bun test",
+    "web": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --web --port 8082"
+  },
+  "version": "1.0.0"
+}

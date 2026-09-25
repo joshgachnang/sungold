@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@components/*": [
+        "./components/*"
+      ],
+      "@store": [
+        "./store/index"
+      ],
+      "@store/*": [
+        "./store/*"
+      ],
+      "@utils": [
+        "./utils/index"
+      ],
+      "@utils/*": [
+        "./utils/*"
+      ]
+    },
+    "strict": true,
+    "types": [
+      "bun",
+      "react-native",
+      "@types/react"
+    ]
+  },
+  "extends": "expo/tsconfig.base",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}

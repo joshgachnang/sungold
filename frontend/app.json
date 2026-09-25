@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "name": "Sungold",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "sungold",
+    "slug": "sungold",
+    "userInterfaceStyle": "automatic",
+    "version": "1.0.0",
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    }
+  }
+}

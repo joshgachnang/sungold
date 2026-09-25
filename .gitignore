@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Local env (use .env.example as a template)
+backend/.env
+frontend/.env
+
+# Local Terreno dev logs (winston JSONL + optional browser fallback)
+.terreno/
+
+# Build outputs
+dist/
+build/
+
+# OS
+.DS_Store
