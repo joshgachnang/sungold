@@ -82,6 +82,8 @@ function RootLayoutNav(): React.ReactElement {
           <Stack.Protected guard={Boolean(userId)}>
             <Stack.Screen name="(tabs)" options={{headerShown: false}} />
           </Stack.Protected>
+          {/* Reachable signed in or out: it handles both states for native app sign-in. */}
+          <Stack.Screen name="device-login" options={{headerShown: false}} />
         </Stack>
       </ThemeProvider>
     </SyncDbProvider>

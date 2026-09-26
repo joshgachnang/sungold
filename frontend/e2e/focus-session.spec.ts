@@ -28,6 +28,34 @@ test.describe("Focus sessions", () => {
     await expect(page.getByTestId("focus-peek-button")).toBeHidden();
   });
 
+  test("user cannot request a second peek while the first grant is on its way", async ({page}) => {
+    // Hold back grant deltas so the issued grant has not reached the screen yet.
+    await page.routeWebSocket(/localhost:4000\/socket\.io/, (ws) => {
+      const server = ws.connectToServer();
+      server.onMessage((message) => {
+        if (typeof message === "string" && message.includes('"collection":"unlockGrants"')) {
+          return;
+        }
+        ws.send(message);
+      });
+    });
+    await page.reload();
+    await page.getByTestId("focus-start-button").waitFor({state: "visible"});
+    await page.getByTestId("focus-domain-input").fill("x.com");
+    await page.getByTestId("focus-start-button").click();
+    await page.getByTestId("focus-active-session").waitFor({state: "visible"});
+
+    const grantIssued = page.waitForResponse(
+      (response) => response.url().endsWith("/grants") && response.status() === 200
+    );
+    await page.getByTestId("focus-peek-button").click();
+    await grantIssued;
+    // The request has finished; the screen waits for the grant instead of re-enabling Peek.
+    await expect(page.getByTestId("focus-peek-pending")).toBeVisible();
+    await expect(page.getByTestId("focus-peek-button")).toBeDisabled();
+    await expect(page.getByTestId("focus-grant-countdown")).toBeHidden();
+  });
+
   test("user can end a session and start again", async ({page}) => {
     await page.getByTestId("focus-domain-input").fill("reddit.com");
     await page.getByTestId("focus-start-button").click();

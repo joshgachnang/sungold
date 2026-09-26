@@ -169,7 +169,8 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
       body: {minutes: PEEK_MINUTES, reason: "peek"},
       id: session._id,
     });
-    const grantId = (result as {data?: {data?: {_id?: string}}}).data?.data?._id;
+    // The generated API unwraps the server's {data} envelope.
+    const grantId = (result as {data?: {_id?: string}}).data?._id;
     if (grantId) {
       setPendingGrantId(grantId);
     }
@@ -207,6 +208,11 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
             variant="secondary"
           />
         )}
+        {pendingGrantId ? (
+          <Box testID="focus-peek-pending">
+            <Text color="secondaryDark">Unlocking…</Text>
+          </Box>
+        ) : null}
         {grantError ? (
           <Box testID="focus-peek-error">
             <Text color="error">Could not unlock. Try again.</Text>

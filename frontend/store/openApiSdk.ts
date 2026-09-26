@@ -4,6 +4,7 @@ export const addTagTypes = [
   "users",
   "focussessions",
   "unlockgrants",
+  "devicesessions",
   "admin",
   "adminMigrations",
   "organizations",
@@ -53,6 +54,21 @@ const injectedRtkApi = api
         invalidatesTags: ["users"],
         query: (queryArg) => ({method: "DELETE", url: `/users/${queryArg}`}),
       }),
+      devicesessionsIssue: build.mutation<DevicesessionsIssueRes, DevicesessionsIssueArgs>({
+        invalidatesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/deviceSessions/issue`,
+        }),
+      }),
+      devicesessionsRevoke: build.mutation<DevicesessionsRevokeRes, DevicesessionsRevokeArgs>({
+        invalidatesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          method: "POST",
+          url: `/deviceSessions/${queryArg}/revoke`,
+        }),
+      }),
       focussessionsEnd: build.mutation<FocussessionsEndRes, FocussessionsEndArgs>({
         invalidatesTags: ["focussessions"],
         query: (queryArg) => ({
@@ -92,6 +108,22 @@ const injectedRtkApi = api
       getAdminUsersById: build.query<GetAdminUsersByIdRes, GetAdminUsersByIdArgs>({
         providesTags: ["users"],
         query: (queryArg) => ({url: `/admin/users/${queryArg}`}),
+      }),
+      getDeviceSessions: build.query<GetDeviceSessionsRes, GetDeviceSessionsArgs>({
+        providesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sort: queryArg.sort,
+          },
+          url: `/deviceSessions/`,
+        }),
+      }),
+      getDeviceSessionsById: build.query<GetDeviceSessionsByIdRes, GetDeviceSessionsByIdArgs>({
+        providesTags: ["devicesessions"],
+        query: (queryArg) => ({url: `/deviceSessions/${queryArg}`}),
       }),
       getFocusSessions: build.query<GetFocusSessionsRes, GetFocusSessionsArgs>({
         providesTags: ["focussessions"],
@@ -706,6 +738,72 @@ export type GetUnlockGrantsByIdRes = /** status 200 Successful read */ {
   _syncSeq?: number;
 };
 export type GetUnlockGrantsByIdArgs = string;
+export type DevicesessionsRevokeRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type DevicesessionsRevokeArgs = string;
+export type DevicesessionsIssueRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type DevicesessionsIssueArgs = {
+  client: "mac";
+  name?: string;
+  redirect: string;
+  state: string;
+};
+export type GetDeviceSessionsRes = /** status 200 Successful list */ {
+  data?: {
+    /** Id of the Better Auth session issued to the device (not the token) */
+    betterAuthSessionId: string;
+    /** Which native client this is */
+    client: "mac";
+    /** Display name the device reported, e.g. the Mac's computer name */
+    name?: string;
+    /** The user the device is signed in as */
+    ownerId: string;
+    /** When the owner revoked the device; its token stops working immediately */
+    revokedAt?: string;
+    _id: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetDeviceSessionsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetDeviceSessionsByIdRes = /** status 200 Successful read */ {
+  /** Id of the Better Auth session issued to the device (not the token) */
+  betterAuthSessionId: string;
+  /** Which native client this is */
+  client: "mac";
+  /** Display name the device reported, e.g. the Mac's computer name */
+  name?: string;
+  /** The user the device is signed in as */
+  ownerId: string;
+  /** When the owner revoked the device; its token stops working immediately */
+  revokedAt?: string;
+  _id: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+};
+export type GetDeviceSessionsByIdArgs = string;
 export type GetAdminConfigRes = /** status 200 Success */ {
   capabilities?: {
     actions?: boolean;
@@ -1036,6 +1134,10 @@ export const {
   useUnlockgrantsPublicKeyQuery,
   useGetUnlockGrantsQuery,
   useGetUnlockGrantsByIdQuery,
+  useDevicesessionsRevokeMutation,
+  useDevicesessionsIssueMutation,
+  useGetDeviceSessionsQuery,
+  useGetDeviceSessionsByIdQuery,
   useGetAdminConfigQuery,
   usePostAdminBackgroundTasksMutation,
   usePostAdminUsersBulkPatchMutation,

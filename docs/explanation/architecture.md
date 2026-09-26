@@ -120,6 +120,19 @@ Every write here is a server decision (domain normalization, one active session,
 - Native clients (Mac, iOS) use a Better Auth bearer session token.
 - The Mac signs in by browser handoff: it opens the web login and receives a device token on `sungold-mac://auth` ([0008](../decisions/0008-mac-browser-signin-handoff.md)).
 
+### Device sign-in (browser handoff)
+
+1. The Mac opens `https://<web app>/device-login?client=mac&redirect=sungold-mac://auth&state=<random>&name=<computer name>` in `ASWebAuthenticationSession`.
+2. If the user is signed out, the page sends them to `/login` and back (`/login?next=/device-login?...`; only `/device-login` paths are accepted as `next`).
+3. The user approves. The page calls `POST /deviceSessions/issue` with `{client, name, redirect, state}`.
+4. The backend checks that `redirect` is exactly the client's allowlisted callback (`mac` → `sungold-mac://auth`) and that `state` is 1–256 URL-safe characters, creates a new Better Auth session for the user, records a `DeviceSession`, and returns `redirectUrl` = `sungold-mac://auth?state=<state>&token=<session token>`.
+5. The page opens `redirectUrl`; the Mac checks `state` and stores the token in the Keychain. It sends `Authorization: Bearer <token>` on REST, sync and socket requests.
+
+`DeviceSession` (`/deviceSessions`, not synced) lists a user's signed-in devices (`client`, `name`, `revokedAt`) without the token. `POST /deviceSessions/:id/revoke` deletes the Better Auth session, so the device's token stops working immediately; other sessions are unaffected. Device sessions cannot be created, edited or deleted directly.
+
+- **Only a web sign-in can add a device.** `issue` returns 403 when the caller is itself a device session, so a stolen device token cannot mint new tokens that would survive its revocation.
+- **Tokens expire like any Better Auth session.** When a device token stops working (expiry, revocation, password reset), requests return 401 and the device must run the sign-in handoff again. The `DeviceSession` record is not updated for expiry, so the device list can show an expired device as active until it is revoked.
+
 ## Privacy line
 
 Sungold stores what users create — sessions, rules, plans — on a server that can read it. It does not collect browsing history, activity tracking, or third-party analytics. Blocking decisions on devices are made locally and report nothing about visited sites. OAuth tokens for integrations are encrypted at rest. There is no end-to-end encryption in v1, and product copy must not claim it ([0006](../decisions/0006-privacy-server-visible-no-tracking.md)).

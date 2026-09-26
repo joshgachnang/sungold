@@ -42,3 +42,20 @@ export const endActiveSessions = async (
     expect(ended.ok(), await ended.text()).toBe(true);
   }
 };
+
+// Revokes every device session the user has, so e2e runs do not leave live device tokens.
+export const revokeDeviceSessions = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const authorization = await authorizationFor(request, user);
+  const list = await request.get(`${API_URL}/deviceSessions`, {headers: {authorization}});
+  expect(list.ok(), await list.text()).toBe(true);
+  const {data} = (await list.json()) as {data: {_id: string; revokedAt?: string}[]};
+  for (const device of data.filter((item) => !item.revokedAt)) {
+    const revoked = await request.post(`${API_URL}/deviceSessions/${device._id}/revoke`, {
+      headers: {authorization},
+    });
+    expect(revoked.ok(), await revoked.text()).toBe(true);
+  }
+};
