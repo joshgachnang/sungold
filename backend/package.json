@@ -32,6 +32,7 @@
     "compile": "tsc",
     "dev": "PORT=4000 bun run --watch src/index.ts",
     "format": "biome format --write .",
+    "grant-key": "bun run src/scripts/generateGrantKey.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:unsafefix": "biome check --write . --unsafe",

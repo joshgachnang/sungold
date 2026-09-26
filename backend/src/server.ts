@@ -16,6 +16,7 @@ import type express from "express";
 import mongoose from "mongoose";
 import {access} from "./access";
 import {focusSessionRouter} from "./api/focusSessions";
+import {unlockGrantRouter} from "./api/unlockGrants";
 import {userRouter} from "./api/users";
 import {AppConfiguration} from "./models/appConfiguration";
 import {organizationSettingsSchema} from "./models/organizationSettings";
@@ -75,6 +76,7 @@ export const start = async (skipListen = false): Promise<express.Application> =>
   return terraApp
     .register(userRouter)
     .register(focusSessionRouter)
+    .register(unlockGrantRouter)
     .register(
       new HealthApp({
         check: async () => {

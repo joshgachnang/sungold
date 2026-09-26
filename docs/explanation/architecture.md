@@ -60,7 +60,19 @@ Route: `/focusSessions` (`backend/src/api/focusSessions.ts`). Sync stream: `focu
 
 Owners can read, list, update `blockedDomains`/`intention`/`endsAt`, and end their sessions. Other users cannot see them. Sessions cannot be deleted.
 
-Remaining model details land with each model's task.
+### `UnlockGrant`
+
+Route: `/unlockGrants` (`backend/src/api/unlockGrants.ts`), read-only for the owner. Sync stream: `unlockGrants|owner:{ownerId}`. Grants are created only by `POST /focusSessions/:id/grants`; they cannot be created, edited or deleted directly, over REST or sync.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | Same value as `grantId` in the payload |
+| `ownerId` | ObjectId | The session's owner |
+| `sessionId` | string | The session whose block the grant lifts |
+| `reason` | `peek` | Timed unlock; more reasons arrive with the strictness and NFC IPs |
+| `issuedAt`, `expiresAt` | Date | Copies of the signed values, for queries and display |
+| `payload` | string | Signed payload (see below), base64url |
+| `signature` | string | Ed25519 signature over the payload bytes, base64url |
 
 ## Unlock grants
 
@@ -73,7 +85,28 @@ Every unlock — timed peek, NFC tap, cooldown, emergency escape — is an `Unlo
 
 **Offline rule:** a device that cannot reach the server keeps enforcing its last known session and never unlocks without a verified grant. The local typed-phrase escape (later IP) is the only offline way out.
 
-The grant payload format is a versioned contract; its fields are documented here when the grant task ships.
+### Issuing a grant
+
+`POST /focusSessions/:id/grants` with `{"minutes": 5, "reason": "peek"}`. Owner only; the session must be active (409 otherwise). `minutes` must be a number and is rounded and clamped to 1–30. `reason` is optional and defaults to `peek`; unknown fields are rejected. The response is the stored `UnlockGrant`.
+
+### Grant contract (v1)
+
+`payload` is the base64url encoding of this UTF-8 JSON, with keys in this order:
+
+```json
+{"expiresAt":"2026-09-26T18:05:00.000Z","grantId":"66f…","issuedAt":"2026-09-26T18:00:00.000Z","scope":"all","sessionId":"66f…","userId":"66f…","v":1}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `v` | Contract version; clients reject versions they do not know |
+| `grantId`, `userId`, `sessionId` | What the grant belongs to; clients check `userId` and `sessionId` match their signed-in user and active session |
+| `scope` | `all`: lifts the whole session block on every device |
+| `issuedAt`, `expiresAt` | ISO 8601 UTC; the block is lifted only between these times |
+
+Clients verify `signature` against the **exact payload bytes** before parsing, using the raw Ed25519 public key from `GET /unlockGrants/publicKey` (`{"algorithm":"Ed25519","publicKey":"<base64url 32 bytes>"}`, no sign-in needed), pinned in their build.
+
+The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun run grant-key` writes a development key to `backend/.env`; production keys are secrets. If the key is missing, unreadable or not an Ed25519 key, both issuing a grant and `GET /unlockGrants/publicKey` fail with 500.
 
 ## Authentication
 

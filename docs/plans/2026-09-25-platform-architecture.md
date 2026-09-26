@@ -40,7 +40,7 @@ Every later IP (iOS blocking, page-level rules, strictness ladder, NFC, comms, p
 
 - The Xcode project is generated from `macos/project.yml` with XcodeGen, so targets are reviewable text rather than pbxproj edits (avoids ai-watchdog's Ruby pbxproj scripts).
 - The Mac receives state by speaking the Terreno sync protocol read-only: `GET /sync/snapshot` on connect, Socket.IO `sync:subscribe` + `sync:delta` for live updates, bearer auth. If the protocol proves impractical from Swift, fall back to a purpose-built `GET /devices/me/state` + a socket event. Record which one shipped in the architecture doc.
-- The grant payload is canonical JSON `{v, grantId, userId, sessionId, scope, issuedAt, expiresAt}` signed with Ed25519. Backend uses Node `crypto`; Mac uses CryptoKit `Curve25519.Signing`. The signing key comes from `GRANT_SIGNING_PRIVATE_KEY`, and the public key is served at `GET /grants/public-key` and pinned in the app build.
+- The grant payload is canonical JSON `{v, grantId, userId, sessionId, scope, issuedAt, expiresAt}` signed with Ed25519. Backend uses Node `crypto`; Mac uses CryptoKit `Curve25519.Signing`. The signing key comes from `GRANT_SIGNING_PRIVATE_KEY`, and the public key is served at `GET /unlockGrants/publicKey` and pinned in the app build.
 - Grant expiry on the Mac is checked against wall-clock time with a monotonic-clock guard, so moving the system clock back does not extend a grant.
 - Bundle ID prefix is `app.sungold` (from sungoldapp.com).
 
@@ -85,7 +85,7 @@ Every later IP (iOS blocking, page-level rules, strictness ladder, NFC, comms, p
 | --- | --- | --- |
 | A1 | Architecture doc and ten decision records exist and match AD1–AD10. | File review in Roast against this table; links resolve (`bun x markdown-link-check` or equivalent). |
 | A2 | An authenticated user can create, read and end their own `FocusSession`; other users cannot read it. | Backend `bun test` covering owner and non-owner access. |
-| A3 | `POST /focusSessions/:id/grants` returns a grant whose Ed25519 signature verifies against `GET /grants/public-key`; grants for ended sessions or other users' sessions are rejected. | Backend `bun test`. |
+| A3 | `POST /focusSessions/:id/grants` returns a grant whose Ed25519 signature verifies against `GET /unlockGrants/publicKey`; grants for ended sessions or other users' sessions are rejected. | Backend `bun test`. |
 | A4 | Grants are synced to the owner's devices through the same stream as sessions. | Backend test asserting the grant collection is registered for owner-scoped sync; T6 snapshot probe shows grant rows. |
 | A5 | The web app can start a session with domains, request a 5-minute peek, and shows the grant countdown. | Playwright spec `e2e/focus-session.spec.ts` using `loginAs` and testIDs. |
 | A6 | The Mac app signs in through the browser and stores the bearer token in the Keychain. | Swift unit test for callback parsing + token store; T5 backend test for the handoff route; recorded run log. |

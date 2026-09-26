@@ -40,7 +40,7 @@ Order: **T1** first. Then **T2** and **T5** in parallel. T3 needs T2. T4 needs T
 ## T3 — `UnlockGrant` model, Ed25519 signing, public key route
 
 - **Files:** `backend/src/models/unlockGrant.ts`, `backend/src/utils/grantSigning.ts`, `backend/src/api/grants.ts`, `backend/src/api/grants.test.ts`, `backend/.env.example`, `backend/src/scripts/generateGrantKey.ts`.
-- **Do:** `POST /focusSessions/:id/grants {minutes, reason: "peek"}` creates a grant for the owner's active session, computes `expiresAt`, signs canonical JSON `{v:1, grantId, userId, sessionId, scope:"all", issuedAt, expiresAt}`, and stores `payload` + `signature` (base64url). `GET /grants/public-key` returns the raw Ed25519 public key. Grants are an owner-scoped synced collection. Key from `GRANT_SIGNING_PRIVATE_KEY`; the dev script generates one into `backend/.env`. Minutes clamped to 1–30.
+- **Do:** `POST /focusSessions/:id/grants {minutes, reason: "peek"}` creates a grant for the owner's active session, computes `expiresAt`, signs canonical JSON `{v:1, grantId, userId, sessionId, scope:"all", issuedAt, expiresAt}`, and stores `payload` + `signature` (base64url). `GET /unlockGrants/publicKey` returns the raw Ed25519 public key (the plan's `/grants/public-key`, renamed to fit Terreno's `modelRouter` collection-action paths). Grants are an owner-scoped synced collection. Key from `GRANT_SIGNING_PRIVATE_KEY`; the dev script generates one into `backend/.env`. Minutes clamped to 1–30.
 - **Acceptance:** A3, A4.
 - **Verify:** `bun test` covering verify-ok, tampered payload, ended session, other user, clamp.
 - **Docs:** Grant format section in `docs/explanation/architecture.md` (versioned contract) and decision record 0007.

@@ -1,8 +1,21 @@
-import {APIError, modelRouter, OwnerQueryFilter, Permissions} from "@terreno/api";
+import {APIError, modelRouter, OwnerQueryFilter, Permissions, z} from "@terreno/api";
+import mongoose from "mongoose";
 import {FocusSession} from "../models/focusSession";
+import {UnlockGrant} from "../models/unlockGrant";
 import type {FocusSessionDocument} from "../types/models/focusSessionTypes";
 import type {UserDocument} from "../types/models/userTypes";
 import {normalizeDomains} from "../utils/domains";
+import {signGrant} from "../utils/grantSigning";
+
+const MIN_GRANT_MINUTES = 1;
+const MAX_GRANT_MINUTES = 30;
+
+const grantBodySchema = z
+  .object({
+    minutes: z.number(),
+    reason: z.enum(["peek"]).optional(),
+  })
+  .strict();
 
 const cleanDomains = (value: unknown): string[] => {
   if (!Array.isArray(value) || value.length === 0) {
@@ -39,6 +52,45 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
       method: "POST",
       permissions: [Permissions.IsOwner],
       summary: "End an active focus session",
+    },
+    grants: {
+      body: grantBodySchema,
+      handler: async ({body, doc}) => {
+        const session = doc as FocusSessionDocument;
+        if (session.status !== "active") {
+          throw new APIError({status: 409, title: "Session has ended"});
+        }
+        const {minutes, reason} = body as z.infer<typeof grantBodySchema>;
+        const clamped = Math.min(
+          MAX_GRANT_MINUTES,
+          Math.max(MIN_GRANT_MINUTES, Math.round(minutes))
+        );
+        const grantId = new mongoose.Types.ObjectId().toHexString();
+        const issuedAt = new Date();
+        const expiresAt = new Date(issuedAt.getTime() + clamped * 60 * 1000);
+        const signed = signGrant({
+          expiresAt: expiresAt.toISOString(),
+          grantId,
+          issuedAt: issuedAt.toISOString(),
+          scope: "all",
+          sessionId: session._id,
+          userId: String(session.ownerId),
+          v: 1,
+        });
+        return UnlockGrant.create({
+          _id: grantId,
+          expiresAt,
+          issuedAt,
+          ownerId: session.ownerId,
+          payload: signed.payload,
+          reason: reason ?? "peek",
+          sessionId: session._id,
+          signature: signed.signature,
+        });
+      },
+      method: "POST",
+      permissions: [Permissions.IsOwner],
+      summary: "Issue a signed, expiring unlock grant for an active session",
     },
   },
   permissions: {

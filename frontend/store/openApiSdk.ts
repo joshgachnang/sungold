@@ -3,6 +3,7 @@ import {emptySplitApi as api} from "./betterAuthApi";
 export const addTagTypes = [
   "users",
   "focussessions",
+  "unlockgrants",
   "admin",
   "adminMigrations",
   "organizations",
@@ -57,6 +58,14 @@ const injectedRtkApi = api
         query: (queryArg) => ({
           method: "POST",
           url: `/focusSessions/${queryArg}/end`,
+        }),
+      }),
+      focussessionsGrants: build.mutation<FocussessionsGrantsRes, FocussessionsGrantsArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "POST",
+          url: `/focusSessions/${queryArg.id}/grants`,
         }),
       }),
       getAdminConfig: build.query<GetAdminConfigRes, GetAdminConfigArgs>({
@@ -116,6 +125,23 @@ const injectedRtkApi = api
       getOrgsMine: build.query<GetOrgsMineRes, GetOrgsMineArgs>({
         providesTags: ["organizations"],
         query: () => ({url: `/orgs/mine`}),
+      }),
+      getUnlockGrants: build.query<GetUnlockGrantsRes, GetUnlockGrantsArgs>({
+        providesTags: ["unlockgrants"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sessionId: queryArg.sessionId,
+            sort: queryArg.sort,
+          },
+          url: `/unlockGrants/`,
+        }),
+      }),
+      getUnlockGrantsById: build.query<GetUnlockGrantsByIdRes, GetUnlockGrantsByIdArgs>({
+        providesTags: ["unlockgrants"],
+        query: (queryArg) => ({url: `/unlockGrants/${queryArg}`}),
       }),
       getUsers: build.query<GetUsersRes, GetUsersArgs>({
         providesTags: ["users"],
@@ -241,6 +267,10 @@ const injectedRtkApi = api
           method: "POST",
           url: `/users/`,
         }),
+      }),
+      unlockgrantsPublicKey: build.query<UnlockgrantsPublicKeyRes, UnlockgrantsPublicKeyArgs>({
+        providesTags: ["unlockgrants"],
+        query: () => ({url: `/unlockGrants/publicKey`}),
       }),
     }),
     overrideExisting: false,
@@ -395,6 +425,16 @@ export type FocussessionsEndRes = /** status 200 Successful response */ {
   data?: object;
 };
 export type FocussessionsEndArgs = string;
+export type FocussessionsGrantsRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsGrantsArgs = {
+  id: string;
+  body: {
+    minutes: number;
+    reason?: "peek";
+  };
+};
 export type PostFocusSessionsRes = /** status 201 Successful create */ {
   /** The document id (String so offline sync clients can mint ids) */
   _id: string;
@@ -586,6 +626,86 @@ export type PatchFocusSessionsByIdArgs = {
     _syncSeq?: number;
   };
 };
+export type UnlockgrantsPublicKeyRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type UnlockgrantsPublicKeyArgs = undefined;
+export type GetUnlockGrantsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so it can be synced) */
+    _id: string;
+    /** When the grant stops lifting the block; clients relock at this time */
+    expiresAt: string;
+    /** When the server issued and signed the grant */
+    issuedAt: string;
+    /** The user the grant was issued to */
+    ownerId: string;
+    /** Signed grant payload: base64url of the canonical JSON (contract version v) */
+    payload: string;
+    /** Why the grant was issued (peek = timed unlock) */
+    reason: "peek";
+    /** The focus session whose block this grant lifts */
+    sessionId: string;
+    /** Ed25519 signature over the payload bytes, base64url */
+    signature: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetUnlockGrantsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  sessionId?:
+    | string
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetUnlockGrantsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** When the grant stops lifting the block; clients relock at this time */
+  expiresAt: string;
+  /** When the server issued and signed the grant */
+  issuedAt: string;
+  /** The user the grant was issued to */
+  ownerId: string;
+  /** Signed grant payload: base64url of the canonical JSON (contract version v) */
+  payload: string;
+  /** Why the grant was issued (peek = timed unlock) */
+  reason: "peek";
+  /** The focus session whose block this grant lifts */
+  sessionId: string;
+  /** Ed25519 signature over the payload bytes, base64url */
+  signature: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetUnlockGrantsByIdArgs = string;
 export type GetAdminConfigRes = /** status 200 Success */ {
   capabilities?: {
     actions?: boolean;
@@ -908,10 +1028,14 @@ export const {
   usePatchUsersByIdMutation,
   useDeleteUsersByIdMutation,
   useFocussessionsEndMutation,
+  useFocussessionsGrantsMutation,
   usePostFocusSessionsMutation,
   useGetFocusSessionsQuery,
   useGetFocusSessionsByIdQuery,
   usePatchFocusSessionsByIdMutation,
+  useUnlockgrantsPublicKeyQuery,
+  useGetUnlockGrantsQuery,
+  useGetUnlockGrantsByIdQuery,
   useGetAdminConfigQuery,
   usePostAdminBackgroundTasksMutation,
   usePostAdminUsersBulkPatchMutation,
