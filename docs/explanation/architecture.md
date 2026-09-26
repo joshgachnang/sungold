@@ -108,6 +108,12 @@ Clients verify `signature` against the **exact payload bytes** before parsing, u
 
 The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun run grant-key` writes a development key to `backend/.env`; production keys are secrets. If the key is missing, unreadable or not an Ed25519 key, both issuing a grant and `GET /unlockGrants/publicKey` fail with 500.
 
+## Web and iOS data path
+
+The Expo app **reads** sessions and grants through syncdb (`focusSessions` and `unlockGrants` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end` and `POST /focusSessions/:id/grants`, using the generated hooks.
+
+Every write here is a server decision (domain normalization, one active session, ending, signing a grant). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
+
 ## Authentication
 
 - Web uses the standard Better Auth session.

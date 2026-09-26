@@ -10,7 +10,7 @@ import {betterAuthClient} from "@/lib/betterAuth";
 export const SYNC_DB_NAME = "sungold";
 
 /** Add synced collection names here as you register modelRouter sync scopes on the backend. */
-export const SYNC_COLLECTIONS: string[] = [];
+export const SYNC_COLLECTIONS: string[] = ["focusSessions", "unlockGrants"];
 
 /**
  * The Better Auth *react* client delivers session changes through a nanostore atom

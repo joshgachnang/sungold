@@ -14,3 +14,10 @@ build/
 
 # OS
 .DS_Store
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+
+# Expo local state
+frontend/.expo/devices.json

@@ -47,6 +47,18 @@ After backend route changes, regenerate the OpenAPI SDK:
 cd frontend && bun run sdk
 ```
 
+## End-to-end tests
+
+With the backend running (`cd backend && bun run dev`):
+
+```bash
+cd frontend
+bunx playwright install chromium   # once
+bun run e2e                        # starts the web app on :8082 if it is not running
+```
+
+Tests live in `frontend/e2e/`. Start the web dev server without `CI=1`; that setting turns off file watching, so edits are not picked up.
+
 ## Deploy
 
 Read the [deployment baseline](https://github.com/TerrenoLabs/terreno/blob/master/docs/explanation/deployment-baseline.md) first (MongoDB replica set, auth secrets, `EXPO_PUBLIC_*` at build time, `/health`, and more).

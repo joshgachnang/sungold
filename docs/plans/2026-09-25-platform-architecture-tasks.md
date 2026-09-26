@@ -49,7 +49,7 @@ Order: **T1** first. Then **T2** and **T5** in parallel. T3 needs T2. T4 needs T
 ## T4 — Web focus screen: start, peek, countdown
 
 - **Files:** `frontend/app/(tabs)/focus.tsx`, `frontend/app/(tabs)/_layout.tsx`, `e2e/focus-session.spec.ts`, `e2e/helpers/login.ts`, `e2e/fixtures/testUsers.ts`, `playwright.config.ts`.
-- **Do:** A tab to enter domains and an optional intention, start/end a session, press **Peek 5 min**, and see the active grant's countdown. Use syncdb hooks for sessions and grants, and `@terreno/ui` components. testIDs such as `focus-screen`, `focus-domain-input`, `focus-start-button`, `focus-peek-button`, `focus-grant-countdown`, `focus-end-button`.
+- **Do:** A tab to enter domains and an optional intention, start/end a session, press **Peek 5 min**, and see the active grant's countdown. Use syncdb hooks to read sessions and grants, REST hooks to write (a local syncdb create keeps pre-normalization values; see the architecture doc), and `@terreno/ui` components. testIDs such as `focus-screen`, `focus-domain-input`, `focus-start-button`, `focus-peek-button`, `focus-grant-countdown`, `focus-end-button`.
 - **Acceptance:** A5.
 - **Verify:** `bunx playwright test e2e/focus-session.spec.ts`; `bun run compile`; `bun run lint`.
 - **Docs:** User-facing how-to `docs/how-to/start-a-focus-session.md`.
