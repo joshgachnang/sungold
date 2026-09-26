@@ -15,6 +15,7 @@ import {HealthApp} from "@terreno/api-health";
 import type express from "express";
 import mongoose from "mongoose";
 import {access} from "./access";
+import {focusSessionRouter} from "./api/focusSessions";
 import {userRouter} from "./api/users";
 import {AppConfiguration} from "./models/appConfiguration";
 import {organizationSettingsSchema} from "./models/organizationSettings";
@@ -73,6 +74,7 @@ export const start = async (skipListen = false): Promise<express.Application> =>
 
   return terraApp
     .register(userRouter)
+    .register(focusSessionRouter)
     .register(
       new HealthApp({
         check: async () => {

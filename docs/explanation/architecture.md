@@ -43,7 +43,24 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
 | `FocusSession` | user | yes, owner stream | An active or ended block: domains, intention, timing |
 | `UnlockGrant` | user | yes, owner stream | A signed, expiring permission to lift a session's block |
 
-Details land with each model's task and are listed here once shipped.
+### `FocusSession`
+
+Route: `/focusSessions` (`backend/src/api/focusSessions.ts`). Sync stream: `focusSessions|owner:{ownerId}`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | String so offline sync clients can mint ids |
+| `ownerId` | ObjectId | Set from the caller; clients cannot set it |
+| `status` | `active` \| `ended` | Server-controlled; one active session per user (409 otherwise, backed by a partial unique index) |
+| `blockedDomains` | string[] | At least one; normalized to bare lowercase hostnames (`https://www.YouTube.com/feed` → `youtube.com`), de-duplicated; invalid entries return 400 |
+| `intention` | string | Optional, up to 280 characters |
+| `startedAt` | Date | Set by the server on create |
+| `endsAt` | Date | Optional planned end |
+| `endedAt` | Date | Set by `POST /focusSessions/:id/end` |
+
+Owners can read, list, update `blockedDomains`/`intention`/`endsAt`, and end their sessions. Other users cannot see them. Sessions cannot be deleted.
+
+Remaining model details land with each model's task.
 
 ## Unlock grants
 
