@@ -8,7 +8,7 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
                 ┌──────────────────────────── backend/ (Express + Mongoose, @terreno/api) ───────────────────────────┐
                 │  Better Auth   FocusSession   UnlockGrant   grant signing (Ed25519)   SyncApp + RealtimeApp          │
                 └───────▲──────────────────────────▲─────────────────────────────────────▲────────────────────────────┘
-      sync + REST       │                          │  sync snapshot + deltas (pending T6) │  (later) sync
+      sync + REST       │                          │  sync snapshot + socket deltas       │  (later) sync
                         │                          │  bearer session token                │
    ┌────────────────────┴──────┐        ┌──────────┴─────────────────────┐     ┌──────────┴──────────────────────┐
    │ frontend/ (Expo)          │        │ macos/Sungold (SwiftUI menu    │     │ frontend/ iOS app extensions    │
@@ -113,6 +113,18 @@ The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun 
 The Expo app **reads** sessions and grants through syncdb (`focusSessions` and `unlockGrants` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end` and `POST /focusSessions/:id/grants`, using the generated hooks.
 
 Every write here is a server decision (domain normalization, one active session, ending, signing a grant). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
+
+## Mac data path
+
+The Mac app speaks the Terreno sync protocol read-only with its device bearer token (`macos/Sungold/SessionStore.swift`):
+
+1. `GET /auth/me` for the user id, then `GET /sync/snapshot` for `focusSessions|owner:{userId}` and `unlockGrants|owner:{userId}` (`macos/Sungold/SnapshotPager.swift`), following the same rules as `@terreno/syncdb`: echo `legacyCursor` while the server returns one, never move the cursor past `frontierSeq`, restart the stream from 0 once if the stored cursor is below `oldestRetainedSeq`, and stop when `hasMore` is false or a page makes no progress.
+2. A Socket.IO connection (`/socket.io/`, WebSocket transport, `auth: {token: "Bearer …"}`) sends `sync:subscribe {collections: ["focusSessions", "unlockGrants"]}`. Once both collections are confirmed (`sync:subscribed`), it catches up once more so nothing between snapshot and subscription is missed. It applies each `sync:delta`, moving the cursor to `min(seq, frontierSeq)`, and runs a catch-up on `sync:resync-required`.
+3. Each entity is guarded by its own `seq` (legacy seq-0 rows always apply), so replays and out-of-order deltas do not overwrite newer data.
+4. If nothing arrives for the server's `pingInterval + pingTimeout`, the connection is treated as dead. Reconnects back off 1, 2, 4, 8, 16, then 30 s. A 401 or socket auth rejection signs the Mac out.
+5. Work from a previous sign-in is discarded: every async step checks that it still belongs to the current sign-in before touching state.
+
+The app never writes through sync. Syncing starts at launch, not when the menu is opened.
 
 ## Authentication
 

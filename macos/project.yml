@@ -1,0 +1,59 @@
+name: Sungold
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+options:
+  bundleIdPrefix: app.sungold
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: $(SUNGOLD_CODE_SIGN_IDENTITY)
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Sungold:
+    type: application
+    platform: macOS
+    sources: [Sungold]
+    info:
+      path: Sungold/Info.plist
+      properties:
+        CFBundleDisplayName: Sungold
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        SungoldAPIURL: $(SUNGOLD_API_URL)
+        SungoldWebURL: $(SUNGOLD_WEB_URL)
+        CFBundleURLTypes:
+          - CFBundleURLName: $(SUNGOLD_BUNDLE_PREFIX).mac.auth
+            CFBundleURLSchemes: [sungold-mac]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac
+        PRODUCT_NAME: Sungold
+        CODE_SIGN_ENTITLEMENTS: Sungold/Sungold.entitlements
+  SungoldTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [SungoldTests]
+    dependencies:
+      - target: Sungold
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Sungold.app/Contents/MacOS/Sungold
+schemes:
+  Sungold:
+    build:
+      targets:
+        Sungold: all
+        SungoldTests: [test]
+    test:
+      targets: [SungoldTests]

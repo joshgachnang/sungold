@@ -1,0 +1,11 @@
+// Local build settings for the Sungold Mac app.
+// DEVELOPMENT_TEAM empty: builds are signed ad hoc ("Sign to Run Locally"). Debug builds keep
+// the device token in a user-only file instead of the Keychain, because ad-hoc signatures
+// change every build and the Keychain would ask again after each rebuild. Release builds
+// always use the Keychain. The filter system extension (later task) needs a real team;
+// see docs/how-to/run-the-mac-app.md.
+DEVELOPMENT_TEAM =
+SUNGOLD_CODE_SIGN_IDENTITY = -
+SUNGOLD_BUNDLE_PREFIX = app.sungold
+SUNGOLD_API_URL = http:/$()/localhost:4000
+SUNGOLD_WEB_URL = http:/$()/localhost:8082
