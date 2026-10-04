@@ -43,6 +43,7 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
 | `Blocklist` | user | yes, owner stream | Saved sets of distracting domains used to start focus sessions |
 | `FocusSession` | user | yes, owner stream | An active or ended block: domains, intention, timing |
 | `UnlockGrant` | user | yes, owner stream | A signed, expiring permission to lift a session's block |
+| `User` profile settings | user | no | Week start day and timezone used for dashboard week boundaries |
 
 ### `Blocklist`
 
@@ -77,6 +78,17 @@ Route: `/focusSessions` (`backend/src/api/focusSessions.ts`). Sync stream: `focu
 Owners can read, list, update `blockedDomains`/`intention`/`endsAt`, and end their sessions. Other users cannot see them. Sessions cannot be deleted.
 
 `POST /focusSessions` accepts `blocklistIds` and/or `blockedDomains`. Every blocklist id must belong to the caller. The server copies the selected blocklists' domains, appends the typed domains, normalizes and de-duplicates the combined list, and stores both the resulting `blockedDomains` and the selected `blocklistIds`. Editing a blocklist later does not change past or active sessions, and session updates cannot change the recorded `blocklistIds`.
+
+### Profile Calendar Settings
+
+Route: `/auth/me`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `weekStartDay` | number | Integer `0`-`6`, where Sunday is `0` and Monday is `1` |
+| `timezone` | string | Valid IANA timezone, such as `America/Los_Angeles` |
+
+Dashboard week-boundary calculations read the signed-in user's saved `weekStartDay` and `timezone` so History and Today agree across devices when weekly summaries are rendered. Profile writes go through `PATCH /auth/me`; invalid week days or non-IANA timezone names are rejected by the user schema.
 
 ### `UnlockGrant`
 

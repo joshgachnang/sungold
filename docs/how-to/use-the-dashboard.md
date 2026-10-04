@@ -9,7 +9,7 @@ Open the web app after signing in to use the dashboard screens.
 | History | Shows past focus work. Weekly focus charts arrive in a later slice. |
 | Blocklists | Creates, edits and deletes saved sets of distracting domains. |
 | Devices | Lists signed-in devices. Revoke controls arrive in a later slice. |
-| Profile | Manages account settings. |
+| Profile | Manages account settings, including the week start day and timezone used by dashboard charts. |
 
 Wide browser windows use the left sidebar. Phones and narrow browser windows use bottom tabs with the same destinations.
 
@@ -28,3 +28,12 @@ x.com, reddit.com
 ```
 
 The server normalizes domains and returns validation messages for invalid entries. Starter presets are ordinary editable blocklists owned by the signed-in user; changing or deleting one does not affect any other user.
+
+## Set Calendar Preferences
+
+1. Open **Profile**.
+2. Choose the day your week starts.
+3. Choose your IANA timezone.
+4. Save calendar settings.
+
+These saved settings are the dashboard source for week boundaries, so the weekly History and Today summaries added in later slices use the same boundaries on every signed-in device.

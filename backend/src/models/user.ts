@@ -1,3 +1,4 @@
+import {IANAZone} from "luxon";
 import mongoose from "mongoose";
 import passportLocalMongoose from "passport-local-mongoose";
 import type {UserDocument, UserModel} from "../types";
@@ -33,6 +34,26 @@ const userSchema = new mongoose.Schema<UserDocument, UserModel>(
     starterBlocklistsSeededAt: {
       description: "When the user's starter blocklists were first seeded",
       type: Date,
+    },
+    timezone: {
+      description: "IANA timezone used for profile-local week boundaries",
+      trim: true,
+      type: String,
+      validate: {
+        message: "Timezone must be a valid IANA timezone",
+        validator: (value: string | undefined): boolean =>
+          value === undefined || IANAZone.isValidZone(value),
+      },
+    },
+    weekStartDay: {
+      description: "Day that starts the user's focus week, Sunday = 0",
+      max: 6,
+      min: 0,
+      type: Number,
+      validate: {
+        message: "Week start day must be an integer from 0 to 6",
+        validator: Number.isInteger,
+      },
     },
   },
   {strict: "throw", toJSON: {virtuals: true}, toObject: {virtuals: true}}

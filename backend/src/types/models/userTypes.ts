@@ -51,4 +51,6 @@ export type UserDocument = DefaultDoc &
     email: string;
     name: string;
     starterBlocklistsSeededAt?: Date;
+    timezone?: string;
+    weekStartDay?: number;
   };

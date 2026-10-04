@@ -1,7 +1,10 @@
 import {Box, Card, Heading, Page, Text} from "@terreno/ui";
 import type React from "react";
+import {useEnsureCalendarProfileDefaults} from "@/hooks/useEnsureCalendarProfileDefaults";
 
 const TodayScreen: React.FC = () => {
+  useEnsureCalendarProfileDefaults();
+
   return (
     <Page navigation={undefined} scroll title="Today">
       <Box gap={4} padding={4} testID="today-screen">

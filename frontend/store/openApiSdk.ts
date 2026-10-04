@@ -365,6 +365,10 @@ export type PostUsersRes = /** status 201 Successful create */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -386,6 +390,10 @@ export type PostUsersArgs = {
   name?: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -408,6 +416,10 @@ export type GetUsersRes = /** status 200 Successful list */ {
     name: string;
     /** When the user's starter blocklists were first seeded */
     starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id: string;
     hash?: string;
     salt?: string;
@@ -452,6 +464,10 @@ export type GetUsersByIdRes = /** status 200 Successful read */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -474,6 +490,10 @@ export type PatchUsersByIdRes = /** status 200 Successful update */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -497,6 +517,10 @@ export type PatchUsersByIdArgs = {
     name?: string;
     /** When the user's starter blocklists were first seeded */
     starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id?: string;
     hash?: string;
     salt?: string;
@@ -1123,6 +1147,10 @@ export type PostAdminUsersRes = /** status 201 Successful create */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -1144,6 +1172,10 @@ export type PostAdminUsersArgs = {
   name?: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -1166,6 +1198,10 @@ export type GetAdminUsersRes = /** status 200 Successful list */ {
     name: string;
     /** When the user's starter blocklists were first seeded */
     starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id: string;
     hash?: string;
     salt?: string;
@@ -1232,6 +1268,10 @@ export type GetAdminUsersByIdRes = /** status 200 Successful read */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -1254,6 +1294,10 @@ export type PatchAdminUsersByIdRes = /** status 200 Successful update */ {
   name: string;
   /** When the user's starter blocklists were first seeded */
   starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -1277,6 +1321,10 @@ export type PatchAdminUsersByIdArgs = {
     name?: string;
     /** When the user's starter blocklists were first seeded */
     starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id?: string;
     hash?: string;
     salt?: string;

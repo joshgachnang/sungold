@@ -11,12 +11,16 @@ export interface ProfileResponse {
   id: string;
   email: string;
   name: string;
+  timezone?: string;
+  weekStartDay?: number;
 }
 
 export interface UpdateProfileRequest {
   name?: string;
   email?: string;
   password?: string;
+  timezone?: string;
+  weekStartDay?: number;
 }
 
 export const terrenoApi = openapi
