@@ -29,6 +29,50 @@ export const createBlocklistViaApi = async (
   return body.data;
 };
 
+export const seedStarterBlocklistsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; domains: string[]; name: string; source: "starter" | "user"}[]> => {
+  const seeded = await request.post(`${API_URL}/blocklists/starter`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(seeded.ok(), await seeded.text()).toBe(true);
+  const body = (await seeded.json()) as {
+    data: {_id: string; domains: string[]; name: string; source: "starter" | "user"}[];
+  };
+  return body.data;
+};
+
+export const deleteBlocklistViaApi = async (
+  request: APIRequestContext,
+  id: string,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const deleted = await request.delete(`${API_URL}/blocklists/${id}`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(deleted.ok(), await deleted.text()).toBe(true);
+};
+
+export const deleteUserBlocklistsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const authorization = await authorizationFor(request, user);
+  const list = await request.get(`${API_URL}/blocklists`, {headers: {authorization}});
+  expect(list.ok(), await list.text()).toBe(true);
+  const body = (await list.json()) as {data?: {_id: string; source: "starter" | "user"}[]};
+  for (const blocklist of body.data ?? []) {
+    if (blocklist.source !== "user") {
+      continue;
+    }
+    const deleted = await request.delete(`${API_URL}/blocklists/${blocklist._id}`, {
+      headers: {authorization},
+    });
+    expect(deleted.ok(), await deleted.text()).toBe(true);
+  }
+};
+
 export const getActiveSessionsViaApi = async (
   request: APIRequestContext,
   user: TestUser = TEST_USER

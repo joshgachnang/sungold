@@ -100,7 +100,7 @@ Details, files and verification for each task are in [`2026-10-04-web-dashboard-
 
 - [x] **T1** — Add Blocklist model, synced route and starter presets
 - [x] **T2** — Start focus sessions from blocklists plus extra domains
-- [ ] **T3** — Add sidebar/tab navigation shell and the Blocklists screen
+- [x] **T3** — Add sidebar/tab navigation shell and the Blocklists screen
 - [ ] **T4** — Add week start day and timezone to the profile
 - [ ] **T5** — Add focus-hours calculation and the History screen
 - [ ] **T6** — Add the parking lot with capture on the Focus screen

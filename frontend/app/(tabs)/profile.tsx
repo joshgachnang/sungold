@@ -95,7 +95,7 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <Page navigation={undefined} scroll title="Profile">
-      <Box gap={4} padding={4}>
+      <Box gap={4} padding={4} testID="profile-screen">
         <Heading>Profile</Heading>
         <Card>
           <Box gap={4}>
