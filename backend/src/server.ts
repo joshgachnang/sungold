@@ -31,7 +31,7 @@ const isDeployed = process.env.NODE_ENV === "production";
 export const start = async (skipListen = false): Promise<express.Application> => {
   await connectToMongoDB();
 
-  logger.info(`Starting Sungold server on port ${process.env.PORT || 4000}`);
+  logger.info(`Starting Sungold server on port ${process.env.PORT || 4093}`);
 
   if (!isDeployed) {
     checkModelsStrict();

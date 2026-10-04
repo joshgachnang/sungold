@@ -14,7 +14,7 @@ A full-stack application built with the Terreno framework.
 cd backend && bun install
 cd frontend && bun install
 
-# Start backend (port 4000)
+# Start backend (port 4093)
 cd backend && bun run dev
 
 # Start frontend (port 8093)

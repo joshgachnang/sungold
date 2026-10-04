@@ -30,7 +30,7 @@ test.describe("Focus sessions", () => {
 
   test("user cannot request a second peek while the first grant is on its way", async ({page}) => {
     // Hold back grant deltas so the issued grant has not reached the screen yet.
-    await page.routeWebSocket(/localhost:4000\/socket\.io/, (ws) => {
+    await page.routeWebSocket(/localhost:4093\/socket\.io/, (ws) => {
       const server = ws.connectToServer();
       server.onMessage((message) => {
         if (typeof message === "string" && message.includes('"collection":"unlockGrants"')) {

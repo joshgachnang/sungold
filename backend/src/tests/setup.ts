@@ -20,7 +20,7 @@ registerSimpleMongoPreload({
   onBeforeEach: () => {
     process.env.AUTH_PROVIDER = "better-auth";
     process.env.BETTER_AUTH_SECRET = "sungold-test-better-auth-secret-000032";
-    process.env.BETTER_AUTH_URL = "http://localhost:4000";
+    process.env.BETTER_AUTH_URL = "http://localhost:4093";
   },
   testEnv: {
     extra: {

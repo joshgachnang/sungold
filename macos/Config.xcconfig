@@ -7,7 +7,7 @@
 DEVELOPMENT_TEAM = ZKQE23T646
 SUNGOLD_CODE_SIGN_IDENTITY = Apple Development
 SUNGOLD_BUNDLE_PREFIX = app.sungold
-SUNGOLD_API_URL = http:/$()/localhost:4000
+SUNGOLD_API_URL = http:/$()/localhost:4093
 SUNGOLD_WEB_URL = http:/$()/localhost:8093
 // Ed25519 public key (raw, base64url) that verifies unlock grants; pinned in the app and the
 // filter. This is the local development backend's key (GET /unlockGrants/publicKey).

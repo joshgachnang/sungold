@@ -34,7 +34,7 @@ Creates `test@example.com` and `admin@example.com` (password `testpassword123`).
 5. **Start the stack**
 
 ```bash
-# Terminal 1 — API (default port 4000)
+# Terminal 1 — API (default port 4093)
 cd backend && bun run dev
 
 # Terminal 2 — web UI (port 8093)

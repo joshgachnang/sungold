@@ -1,6 +1,6 @@
 import {defineConfig, devices} from "@playwright/test";
 
-// Expects the backend on :4000 (cd backend && bun run dev). Starts the web app if needed.
+// Expects the backend on :4093 (cd backend && bun run dev). Starts the web app if needed.
 export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   fullyParallel: false,

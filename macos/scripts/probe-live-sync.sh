@@ -2,10 +2,10 @@
 # Proves the Mac app receives focus sessions live: launches a Debug build signed in with a
 # fresh device token, starts and ends a session through the API, and times the app's logs.
 # Usage: macos/scripts/probe-live-sync.sh [path/to/Sungold.app]
-# Needs: backend on $API (default http://localhost:4000), the e2e user from frontend/e2e.
+# Needs: backend on $API (default http://localhost:4093), the e2e user from frontend/e2e.
 set -euo pipefail
 
-API="${API:-http://localhost:4000}"
+API="${API:-http://localhost:4093}"
 ORIGIN="${ORIGIN:-http://localhost:8093}"
 EMAIL="${EMAIL:-e2e-focus@example.com}"
 PASSWORD="${PASSWORD:-testpassword123}"

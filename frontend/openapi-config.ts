@@ -9,7 +9,7 @@ const config: ConfigFile = {
   hooks: true,
   outputFile: "./store/openApiSdk.ts",
   responseSuffix: "Res",
-  schemaFile: process.env.OPENAPI_URL ?? "http://localhost:4000/openapi.json",
+  schemaFile: process.env.OPENAPI_URL ?? "http://localhost:4093/openapi.json",
   tag: true,
 };
 

@@ -13,7 +13,7 @@ Uses [Bun](https://bun.sh/) as the package manager.
 
 ```bash
 # Backend
-cd backend && bun run dev    # Start backend on port 4000
+cd backend && bun run dev    # Start backend on port 4093
 
 # Frontend
 cd frontend && bun run web   # Start web frontend

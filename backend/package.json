@@ -30,7 +30,7 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir ./dist --target node",
     "compile": "tsc",
-    "dev": "PORT=4000 bun run --watch src/index.ts",
+    "dev": "PORT=4093 bun run --watch src/index.ts",
     "format": "biome format --write .",
     "grant-key": "bun run src/scripts/generateGrantKey.ts",
     "lint": "biome check .",
