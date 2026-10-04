@@ -14,8 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         MainActor.assumeIsolated {
             // The filter blocks exactly the active session's domains; no session, no blocking.
-            store.$state
-                .map { $0.activeSession?.blockedDomains ?? [] }
+            // Only once this sign-in has synced: before that (launch, offline, signed out) the
+            // filter keeps its last list, so neither relaunching nor signing out lifts a block.
+            store.$state.combineLatest(store.$hasSynced)
+                .filter { $0.1 }
+                .map { $0.0.activeSession?.blockedDomains ?? [] }
                 .removeDuplicates()
                 .sink { [filter] domains in MainActor.assumeIsolated { filter.setBlockedDomains(domains) } }
                 .store(in: &subscriptions)

@@ -126,6 +126,21 @@ The Mac app speaks the Terreno sync protocol read-only with its device bearer to
 
 The app never writes through sync. Syncing starts at launch, not when the menu is opened.
 
+## Mac website blocking
+
+`macos/SungoldFilter/` is an `NEFilterDataProvider` system extension (decision [0002](../decisions/0002-layered-mac-web-blocking.md), layer 1).
+
+| Piece | Behavior |
+| --- | --- |
+| What it blocks | The active session's `blockedDomains` and their subdomains (`DomainMatcher`). No active session: nothing. |
+| How it sees the site | `remoteHostname` or the flow URL; for connections made by IP, the TLS ClientHello server name or HTTP `Host` header from the first outbound bytes (`TLSClientHello`). Paths are never visible. |
+| Where the list comes from | The app writes it to the filter configuration's `vendorConfiguration["blockedDomains"]` whenever the active session changes (`FilterController`). The system keeps it when the app quits. |
+| When the list changes | Only after the app has synced the current sign-in. Launching, going offline or signing out never clears it; a session that ends while the app is closed stays blocked until the next sync. |
+| What it reports | Nothing leaves the device; blocked hosts are only written to the local system log. |
+| Known gaps | UDP flows with no hostname (an app that resolves DNS itself and connects by IP, or uses DNS over HTTPS) are allowed, and for TCP connections by IP the server name must be in the first 2048 bytes. Chrome's QUIC traffic carries a hostname and is blocked. |
+
+Unlock grants are not applied yet: an active session blocks until it ends. Signed-grant verification and automatic relock are the next task.
+
 ## Authentication
 
 - Web uses the standard Better Auth session.

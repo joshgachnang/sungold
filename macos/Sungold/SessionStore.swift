@@ -17,6 +17,9 @@ final class SessionStore: ObservableObject {
     @Published private(set) var status: Status = .signedOut
     @Published private(set) var user: CurrentUser?
     @Published private(set) var state = SyncState()
+    /// True once this sign-in has finished its first catch-up, i.e. `state` reflects the
+    /// server. Until then the app does not know whether a session is active.
+    @Published private(set) var hasSynced = false
 
     private let logger = Logger(subsystem: "app.sungold.mac", category: "sync")
     private let config: AppConfig
@@ -68,6 +71,7 @@ final class SessionStore: ObservableObject {
 
     private func stop() {
         generation += 1
+        hasSynced = false
         socket?.close()
         socket = nil
         subscribedCollections = []
@@ -87,6 +91,7 @@ final class SessionStore: ObservableObject {
                 user = me
                 try await catchUp(api: api, userId: me.id, generation: myGeneration)
                 guard isCurrent(myGeneration) else { return }
+                hasSynced = true
                 openSocket(token: token, api: api, userId: me.id, generation: myGeneration)
             } catch APIClient.APIError.unauthorized {
                 guard isCurrent(myGeneration) else { return }

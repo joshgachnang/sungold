@@ -21,6 +21,9 @@ final class FilterController: NSObject, ObservableObject {
     @Published private(set) var status: Status = .notInstalled
     private let logger = Logger(subsystem: "app.sungold.mac", category: "filter")
     private var desiredDomains: [String] = []
+    /// False until the app knows the session state. Until then the filter keeps whatever
+    /// list it already has, so launching (offline or not) never lifts a block.
+    private var desiredKnown = false
     private var appliedDomains: [String]?
 
     /// Checks whether the filter is already configured, without prompting the user.
@@ -62,11 +65,12 @@ final class FilterController: NSObject, ObservableObject {
     /// Sets the domains the filter should block now; an empty list blocks nothing.
     func setBlockedDomains(_ domains: [String]) {
         desiredDomains = domains.sorted()
+        desiredKnown = true
         push()
     }
 
     private func push() {
-        guard status == .enabled, appliedDomains != desiredDomains else { return }
+        guard status == .enabled, desiredKnown, appliedDomains != desiredDomains else { return }
         let domains = desiredDomains
         NEFilterManager.shared().loadFromPreferences { [weak self] _ in
             MainActor.assumeIsolated {
@@ -101,7 +105,10 @@ final class FilterController: NSObject, ObservableObject {
                 let configuration = manager.providerConfiguration ?? NEFilterProviderConfiguration()
                 configuration.filterSockets = true
                 configuration.filterPackets = false
-                configuration.vendorConfiguration = [FilterConfigurationKey.blockedDomains: self.desiredDomains]
+                // Only overwrite the list when the session state is known.
+                if self.desiredKnown || configuration.vendorConfiguration == nil {
+                    configuration.vendorConfiguration = [FilterConfigurationKey.blockedDomains: self.desiredDomains]
+                }
                 manager.providerConfiguration = configuration
                 manager.localizedDescription = "Sungold"
                 manager.isEnabled = true
@@ -113,7 +120,8 @@ final class FilterController: NSObject, ObservableObject {
                             self.logger.error("enabling filter failed: \(error.localizedDescription, privacy: .public)")
                         } else {
                             self.status = .enabled
-                            self.appliedDomains = self.desiredDomains
+                            self.appliedDomains = configuration.vendorConfiguration?[
+                                FilterConfigurationKey.blockedDomains] as? [String]
                             self.logger.info("filter enabled")
                             self.push()
                         }
