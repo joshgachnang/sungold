@@ -18,7 +18,7 @@ targets:
   Sungold:
     type: application
     platform: macOS
-    sources: [Sungold]
+    sources: [Sungold, Shared]
     info:
       path: Sungold/Info.plist
       properties:
@@ -32,11 +32,46 @@ targets:
             CFBundleURLSchemes: [sungold-mac]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+    attributes:
+      SystemCapabilities:
+        com.apple.NetworkExtensions:
+          enabled: 1
+        com.apple.SystemExtensions:
+          enabled: 1
+    dependencies:
+      - target: SungoldFilter
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac
         PRODUCT_NAME: Sungold
         CODE_SIGN_ENTITLEMENTS: Sungold/Sungold.entitlements
+  SungoldFilter:
+    type: system-extension
+    platform: macOS
+    attributes:
+      SystemCapabilities:
+        com.apple.NetworkExtensions:
+          enabled: 1
+    sources: [SungoldFilter, Shared]
+    info:
+      path: SungoldFilter/Info.plist
+      properties:
+        CFBundleDisplayName: Sungold Filter
+        # sysextd rejects a system extension whose package type is not SYSX.
+        CFBundlePackageType: SYSX
+        NSSystemExtensionUsageDescription: Sungold blocks the websites you choose during focus sessions.
+        NetworkExtension:
+          # Must start with one of the extension's App Groups ($(TeamIdentifierPrefix)app.sungold.mac).
+          NEMachServiceName: $(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)
+          NEProviderClasses:
+            com.apple.networkextension.filter-data: $(PRODUCT_MODULE_NAME).FilterDataProvider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac.filter
+        PRODUCT_NAME: $(SUNGOLD_BUNDLE_PREFIX).mac.filter
+        CODE_SIGN_ENTITLEMENTS: SungoldFilter/SungoldFilter.entitlements
+        SKIP_INSTALL: YES
   SungoldTests:
     type: bundle.unit-test
     platform: macOS

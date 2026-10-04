@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 /// Owns the session store so syncing (and later, enforcement) starts at launch, not when
@@ -5,11 +6,22 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor let store = SessionStore()
     @MainActor let auth = AuthController()
+    @MainActor let filter = FilterController()
+    private var subscriptions: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // When the app is only hosting unit tests, do not sign in or open network connections.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
-        MainActor.assumeIsolated { store.resume() }
+        MainActor.assumeIsolated {
+            // The filter blocks exactly the active session's domains; no session, no blocking.
+            store.$state
+                .map { $0.activeSession?.blockedDomains ?? [] }
+                .removeDuplicates()
+                .sink { [filter] domains in MainActor.assumeIsolated { filter.setBlockedDomains(domains) } }
+                .store(in: &subscriptions)
+            filter.refresh()
+            store.resume()
+        }
     }
 }
 
@@ -19,7 +31,7 @@ struct SungoldApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuView(store: appDelegate.store, auth: appDelegate.auth)
+            MenuView(store: appDelegate.store, auth: appDelegate.auth, filter: appDelegate.filter)
         } label: {
             MenuBarIcon(store: appDelegate.store)
         }
@@ -38,6 +50,7 @@ struct MenuBarIcon: View {
 struct MenuView: View {
     @ObservedObject var store: SessionStore
     let auth: AuthController
+    @ObservedObject var filter: FilterController
     @State private var signInError: String?
 
     var body: some View {
@@ -55,6 +68,7 @@ struct MenuView: View {
                 }
                 SessionSummary(store: store)
                 statusLine
+                filterLine
                 Divider()
                 Button("Sign out") { store.signOut() }
             }
@@ -71,6 +85,26 @@ struct MenuView: View {
         case .connecting: Label("Connecting…", systemImage: "circle.dotted").font(.caption)
         case .offline: Label("Offline — reconnecting", systemImage: "wifi.slash").font(.caption).foregroundStyle(.orange)
         case .signedOut: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var filterLine: some View {
+        switch filter.status {
+        case .enabled:
+            Label("Website blocking on", systemImage: "checkmark.shield").font(.caption)
+        case .waitingForApproval:
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Turn on Sungold under Network Extensions to start blocking.")
+                    .font(.caption).foregroundStyle(.orange)
+                Button("Open Login Items & Extensions…") { FilterController.openApprovalSettings() }
+            }
+        case .notInstalled, .disabled:
+            Button("Turn on website blocking…") { filter.install() }
+        case .failed(let message):
+            VStack(alignment: .leading) {
+                Text("Blocking unavailable: \(message)").font(.caption).foregroundStyle(.red)
+                Button("Try again") { filter.install() }
+            }
         }
     }
 
