@@ -2,6 +2,7 @@
 import {emptySplitApi as api} from "./betterAuthApi";
 export const addTagTypes = [
   "users",
+  "blocklists",
   "focussessions",
   "unlockgrants",
   "devicesessions",
@@ -29,11 +30,22 @@ const injectedRtkApi = api
         providesTags: ["adminMigrations"],
         query: () => ({url: `/admin/migrations/status`}),
       }),
+      blocklistsStarter: build.mutation<BlocklistsStarterRes, BlocklistsStarterArgs>({
+        invalidatesTags: ["blocklists"],
+        query: () => ({method: "POST", url: `/blocklists/starter`}),
+      }),
       deleteAdminUsersById: build.mutation<DeleteAdminUsersByIdRes, DeleteAdminUsersByIdArgs>({
         invalidatesTags: ["users"],
         query: (queryArg) => ({
           method: "DELETE",
           url: `/admin/users/${queryArg}`,
+        }),
+      }),
+      deleteBlocklistsById: build.mutation<DeleteBlocklistsByIdRes, DeleteBlocklistsByIdArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          method: "DELETE",
+          url: `/blocklists/${queryArg}`,
         }),
       }),
       deleteOrgsById: build.mutation<DeleteOrgsByIdRes, DeleteOrgsByIdArgs>({
@@ -108,6 +120,23 @@ const injectedRtkApi = api
       getAdminUsersById: build.query<GetAdminUsersByIdRes, GetAdminUsersByIdArgs>({
         providesTags: ["users"],
         query: (queryArg) => ({url: `/admin/users/${queryArg}`}),
+      }),
+      getBlocklists: build.query<GetBlocklistsRes, GetBlocklistsArgs>({
+        providesTags: ["blocklists"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sort: queryArg.sort,
+            source: queryArg.source,
+          },
+          url: `/blocklists/`,
+        }),
+      }),
+      getBlocklistsById: build.query<GetBlocklistsByIdRes, GetBlocklistsByIdArgs>({
+        providesTags: ["blocklists"],
+        query: (queryArg) => ({url: `/blocklists/${queryArg}`}),
       }),
       getDeviceSessions: build.query<GetDeviceSessionsRes, GetDeviceSessionsArgs>({
         providesTags: ["devicesessions"],
@@ -201,6 +230,14 @@ const injectedRtkApi = api
           url: `/admin/users/${queryArg.id}`,
         }),
       }),
+      patchBlocklistsById: build.mutation<PatchBlocklistsByIdRes, PatchBlocklistsByIdArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "PATCH",
+          url: `/blocklists/${queryArg.id}`,
+        }),
+      }),
       patchFocusSessionsById: build.mutation<PatchFocusSessionsByIdRes, PatchFocusSessionsByIdArgs>(
         {
           invalidatesTags: ["focussessions"],
@@ -268,6 +305,14 @@ const injectedRtkApi = api
           url: `/admin/users/bulk-patch`,
         }),
       }),
+      postBlocklists: build.mutation<PostBlocklistsRes, PostBlocklistsArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/blocklists/`,
+        }),
+      }),
       postFocusSessions: build.mutation<PostFocusSessionsRes, PostFocusSessionsArgs>({
         invalidatesTags: ["focussessions"],
         query: (queryArg) => ({
@@ -318,6 +363,8 @@ export type PostUsersRes = /** status 201 Successful create */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -337,6 +384,8 @@ export type PostUsersArgs = {
   email?: string;
   /** The user's display name */
   name?: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -357,6 +406,8 @@ export type GetUsersRes = /** status 200 Successful list */ {
     email: string;
     /** The user's display name */
     name: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
     _id: string;
     hash?: string;
     salt?: string;
@@ -399,6 +450,8 @@ export type GetUsersByIdRes = /** status 200 Successful read */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -419,6 +472,8 @@ export type PatchUsersByIdRes = /** status 200 Successful update */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -440,6 +495,8 @@ export type PatchUsersByIdArgs = {
     email?: string;
     /** The user's display name */
     name?: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
     _id?: string;
     hash?: string;
     salt?: string;
@@ -453,6 +510,189 @@ export type PatchUsersByIdArgs = {
 };
 export type DeleteUsersByIdRes = unknown;
 export type DeleteUsersByIdArgs = string;
+export type BlocklistsStarterRes = /** status 200 Successful response */ {
+  data: {
+    _id: string;
+    created?: string;
+    deleted?: boolean;
+    domains: string[];
+    name: string;
+    ownerId: string;
+    source: "starter" | "user";
+    starterKey?: string;
+    updated?: string;
+  }[];
+};
+export type BlocklistsStarterArgs = undefined;
+export type PostBlocklistsRes = /** status 201 Successful create */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PostBlocklistsArgs = {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id?: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name?: string;
+  /** The user who owns this blocklist */
+  ownerId?: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source?: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated?: string;
+  /** When this document was created */
+  created?: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetBlocklistsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id: string;
+    /** Normalized hostnames included in this blocklist */
+    domains?: string[];
+    /** The user-visible blocklist name */
+    name: string;
+    /** The user who owns this blocklist */
+    ownerId: string;
+    /** Whether this blocklist started from a preset or was created by the user */
+    source: "starter" | "user";
+    /** Stable preset key used to make starter blocklist seeding idempotent */
+    starterKey?: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetBlocklistsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  source?:
+    | ("starter" | "user")
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetBlocklistsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetBlocklistsByIdArgs = string;
+export type PatchBlocklistsByIdRes = /** status 200 Successful update */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PatchBlocklistsByIdArgs = {
+  id: string;
+  body: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id?: string;
+    /** Normalized hostnames included in this blocklist */
+    domains?: string[];
+    /** The user-visible blocklist name */
+    name?: string;
+    /** The user who owns this blocklist */
+    ownerId?: string;
+    /** Whether this blocklist started from a preset or was created by the user */
+    source?: "starter" | "user";
+    /** Stable preset key used to make starter blocklist seeding idempotent */
+    starterKey?: string;
+    /** When this document was last updated */
+    updated?: string;
+    /** When this document was created */
+    created?: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  };
+};
+export type DeleteBlocklistsByIdRes = unknown;
+export type DeleteBlocklistsByIdArgs = string;
 export type FocussessionsEndRes = /** status 200 Successful response */ {
   data?: object;
 };
@@ -869,6 +1109,8 @@ export type PostAdminUsersRes = /** status 201 Successful create */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -888,6 +1130,8 @@ export type PostAdminUsersArgs = {
   email?: string;
   /** The user's display name */
   name?: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -908,6 +1152,8 @@ export type GetAdminUsersRes = /** status 200 Successful list */ {
     email: string;
     /** The user's display name */
     name: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
     _id: string;
     hash?: string;
     salt?: string;
@@ -972,6 +1218,8 @@ export type GetAdminUsersByIdRes = /** status 200 Successful read */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -992,6 +1240,8 @@ export type PatchAdminUsersByIdRes = /** status 200 Successful update */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
   _id: string;
   hash?: string;
   salt?: string;
@@ -1013,6 +1263,8 @@ export type PatchAdminUsersByIdArgs = {
     email?: string;
     /** The user's display name */
     name?: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
     _id?: string;
     hash?: string;
     salt?: string;
@@ -1125,6 +1377,12 @@ export const {
   useGetUsersByIdQuery,
   usePatchUsersByIdMutation,
   useDeleteUsersByIdMutation,
+  useBlocklistsStarterMutation,
+  usePostBlocklistsMutation,
+  useGetBlocklistsQuery,
+  useGetBlocklistsByIdQuery,
+  usePatchBlocklistsByIdMutation,
+  useDeleteBlocklistsByIdMutation,
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
   usePostFocusSessionsMutation,

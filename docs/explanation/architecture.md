@@ -40,8 +40,23 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
 
 | Model | Owner | Synced | Purpose |
 | --- | --- | --- | --- |
+| `Blocklist` | user | yes, owner stream | Saved sets of distracting domains used to start focus sessions |
 | `FocusSession` | user | yes, owner stream | An active or ended block: domains, intention, timing |
 | `UnlockGrant` | user | yes, owner stream | A signed, expiring permission to lift a session's block |
+
+### `Blocklist`
+
+Route: `/blocklists` (`backend/src/api/blocklists.ts`). Sync stream: `blocklists|owner:{ownerId}`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | String so offline sync clients can mint ids |
+| `ownerId` | ObjectId | Set from the caller; clients cannot set it |
+| `name` | string | User-visible name, 1-60 characters |
+| `domains` | string[] | 1-200 normalized bare lowercase hostnames, de-duplicated |
+| `source` | `starter` \| `user` | Starter presets are editable copies owned by the user |
+
+Owners can create, list, read, update and delete their own blocklists. Other users cannot see them. `POST /blocklists/starter` copies the Social, News and Video starter presets once per user and returns that user's starter lists; the seed flag prevents recreating deleted or renamed starters.
 
 ### `FocusSession`
 

@@ -15,6 +15,7 @@ import {HealthApp} from "@terreno/api-health";
 import type express from "express";
 import mongoose from "mongoose";
 import {access} from "./access";
+import {blocklistRouter} from "./api/blocklists";
 import {configureDeviceAuth, deviceSessionRouter} from "./api/deviceSessions";
 import {focusSessionRouter} from "./api/focusSessions";
 import {unlockGrantRouter} from "./api/unlockGrants";
@@ -78,6 +79,7 @@ export const start = async (skipListen = false): Promise<express.Application> =>
 
   return terraApp
     .register(userRouter)
+    .register(blocklistRouter)
     .register(focusSessionRouter)
     .register(unlockGrantRouter)
     .register(deviceSessionRouter)

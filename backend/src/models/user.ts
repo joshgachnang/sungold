@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema<UserDocument, UserModel>(
       trim: true,
       type: String,
     },
+    starterBlocklistsSeededAt: {
+      description: "When the user's starter blocklists were first seeded",
+      type: Date,
+    },
   },
   {strict: "throw", toJSON: {virtuals: true}, toObject: {virtuals: true}}
 );
