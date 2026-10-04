@@ -42,6 +42,8 @@
 	</dict>
 	<key>SungoldAPIURL</key>
 	<string>$(SUNGOLD_API_URL)</string>
+	<key>SungoldGrantPublicKey</key>
+	<string>$(SUNGOLD_GRANT_PUBLIC_KEY)</string>
 	<key>SungoldWebURL</key>
 	<string>$(SUNGOLD_WEB_URL)</string>
 </dict>

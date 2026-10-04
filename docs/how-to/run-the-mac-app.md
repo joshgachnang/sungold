@@ -85,6 +85,24 @@ macos/scripts/probe-block.sh
 
 The script starts a session blocking `example.com` through the API, checks `example.com`, `www.example.com` and `example.org` with `curl`, ends the session and checks again. Filter logs: `log stream --level info --predicate 'subsystem == "app.sungold.mac.filter"'`.
 
+### Verify peeks unlock and relock
+
+```bash
+macos/scripts/probe-grant.sh
+# 12:19:35 example.com: blocked (curl exit 7)
+# 12:19:35 peek granted until 2026-10-04T19:20:35.318Z
+# 12:19:36 example.com: reachable (HTTP 200)
+# 12:19:36 quit the Sungold app; the filter alone enforces from here
+# 12:20:41 example.com: blocked (curl exit 7)
+# 12:20:49 PASS
+```
+
+It starts a session, issues a 1-minute grant, quits the app, and checks that the filter relocks at expiry on its own. It reopens the app and ends the session when done.
+
+### Updating the filter
+
+macOS only replaces an installed system extension when its build number changes. After changing anything in `macos/SungoldFilter/` or `macos/Shared/`, bump `SUNGOLD_FILTER_BUILD` in `Config.xcconfig`. On launch the app re-submits activation and macOS swaps in the new filter without asking again. Replacing the filter resets existing network connections on the Mac.
+
 ### If activation fails
 
 | Message or log | Cause |

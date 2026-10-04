@@ -27,6 +27,7 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         SungoldAPIURL: $(SUNGOLD_API_URL)
         SungoldWebURL: $(SUNGOLD_WEB_URL)
+        SungoldGrantPublicKey: $(SUNGOLD_GRANT_PUBLIC_KEY)
         CFBundleURLTypes:
           - CFBundleURLName: $(SUNGOLD_BUNDLE_PREFIX).mac.auth
             CFBundleURLSchemes: [sungold-mac]
@@ -58,9 +59,13 @@ targets:
       path: SungoldFilter/Info.plist
       properties:
         CFBundleDisplayName: Sungold Filter
+        # macOS only replaces an installed system extension when this changes: bump
+        # SUNGOLD_FILTER_BUILD in Config.xcconfig with every filter change.
+        CFBundleVersion: $(SUNGOLD_FILTER_BUILD)
         # sysextd rejects a system extension whose package type is not SYSX.
         CFBundlePackageType: SYSX
         NSSystemExtensionUsageDescription: Sungold blocks the websites you choose during focus sessions.
+        SungoldGrantPublicKey: $(SUNGOLD_GRANT_PUBLIC_KEY)
         NetworkExtension:
           # Must start with one of the extension's App Groups ($(TeamIdentifierPrefix)app.sungold.mac).
           NEMachServiceName: $(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)

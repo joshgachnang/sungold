@@ -16,11 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // The filter blocks exactly the active session's domains; no session, no blocking.
             // Only once this sign-in has synced: before that (launch, offline, signed out) the
             // filter keeps its last list, so neither relaunching nor signing out lifts a block.
-            store.$state.combineLatest(store.$hasSynced)
-                .filter { $0.1 }
-                .map { $0.0.activeSession?.blockedDomains ?? [] }
+            // Build from the emitted values: @Published publishes before the property updates.
+            store.$state.combineLatest(store.$user, store.$hasSynced)
+                .filter { $0.2 }
+                .map { SessionStore.filterRules(state: $0.0, user: $0.1) }
                 .removeDuplicates()
-                .sink { [filter] domains in MainActor.assumeIsolated { filter.setBlockedDomains(domains) } }
+                .sink { [filter] rules in MainActor.assumeIsolated { filter.setRules(rules) } }
                 .store(in: &subscriptions)
             filter.refresh()
             store.resume()
@@ -137,8 +138,8 @@ struct SessionSummary: View {
                     }
                     Text("Blocking: \(session.blockedDomains.joined(separator: ", "))")
                         .font(.caption).foregroundStyle(.secondary)
-                    if let grant = store.state.unexpiredGrants(for: session.id, now: context.date).first {
-                        Text("Peek ends in \(Self.remaining(until: grant.expiresAt, now: context.date))")
+                    if let grant = verifiedGrant(for: session, now: context.date) {
+                        Text("Unblocked — peek ends in \(Self.remaining(until: grant.expiresAt, now: context.date))")
                             .font(.caption)
                     }
                 }
@@ -146,6 +147,17 @@ struct SessionSummary: View {
                 Text("No focus session").foregroundStyle(.secondary)
             }
         }
+    }
+
+    private static let verifier = GrantVerifier.pinned()
+
+    /// The latest unexpired grant for the session that verifies against the pinned key; the
+    /// same check the filter uses, so the menu never claims an unlock the filter would refuse.
+    private func verifiedGrant(for session: FocusSession, now: Date) -> GrantPayload? {
+        guard let userId = store.user?.id else { return nil }
+        return store.state.unexpiredGrants(for: session.id, now: now)
+            .compactMap { Self.verifier?.verify(SignedGrant(payload: $0.payload, signature: $0.signature)) }
+            .first { $0.sessionId == session.id && $0.userId == userId && $0.expiresAt > now }
     }
 
     static func remaining(until end: Date, now: Date) -> String {

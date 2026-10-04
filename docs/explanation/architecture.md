@@ -132,14 +132,24 @@ The app never writes through sync. Syncing starts at launch, not when the menu i
 
 | Piece | Behavior |
 | --- | --- |
-| What it blocks | The active session's `blockedDomains` and their subdomains (`DomainMatcher`). No active session: nothing. |
+| What it blocks | The active session's `blockedDomains` and their subdomains (`DomainMatcher`), unless a verified, unexpired grant for that session is present. No active session: nothing. |
 | How it sees the site | `remoteHostname` or the flow URL; for connections made by IP, the TLS ClientHello server name or HTTP `Host` header from the first outbound bytes (`TLSClientHello`). Paths are never visible. |
-| Where the list comes from | The app writes it to the filter configuration's `vendorConfiguration["blockedDomains"]` whenever the active session changes (`FilterController`). The system keeps it when the app quits. |
+| Where the rules come from | The app writes `FilterRules` (domains, session id, user id and the session's signed grants) to the filter configuration's `vendorConfiguration` whenever they change (`FilterController`). The system keeps them when the app quits. |
+| DNS | Flows from the system DNS service (`com.apple.mDNSResponder`) are never dropped: they are long-lived and shared across lookups, so dropping one would keep lookups failing after a peek or session end. Blocking applies to the connection to the site. |
 | When the list changes | Only after the app has synced the current sign-in. Launching, going offline or signing out never clears it; a session that ends while the app is closed stays blocked until the next sync. |
 | What it reports | Nothing leaves the device; blocked hosts are only written to the local system log. |
 | Known gaps | UDP flows with no hostname (an app that resolves DNS itself and connects by IP, or uses DNS over HTTPS) are allowed, and for TCP connections by IP the server name must be in the first 2048 bytes. Chrome's QUIC traffic carries a hostname and is blocked. |
 
-Unlock grants are not applied yet: an active session blocks until it ends. Signed-grant verification and automatic relock are the next task.
+### Grant enforcement on the Mac
+
+The filter extension enforces grants itself (`Shared/GrantVerifier.swift`, `Shared/FilterRules.swift`), so a peek ends on time even if the app has quit or the Mac is offline:
+
+1. Each grant's signature is verified against the Ed25519 public key pinned in the build (`SUNGOLD_GRANT_PUBLIC_KEY` in `macos/Config.xcconfig`, copied into both Info.plists). The payload must be contract `v: 1`, scope `all`, for the rules' user and session, with `expiresAt` after `issuedAt`.
+2. A verified grant lifts the block while the wall clock is before `expiresAt` and no more than 5 minutes before `issuedAt`.
+3. Clock guard: when the filter first sees a grant it records the remaining time and the monotonic uptime. The grant ends when either the wall clock reaches `expiresAt` or that much uptime has passed, so setting the clock back does not extend it. After a reboot the uptime baseline restarts, so a grant seen again after rebooting with the clock set back would get its remaining time again.
+4. New connections are checked as they open; connections opened during a peek are not cut when it ends.
+
+The menu-bar countdown uses the same verification, so it never shows an unlock the filter would refuse.
 
 ## Authentication
 

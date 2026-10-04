@@ -31,7 +31,7 @@ wait_filter() { # expected domain list (comma separated, empty for none)
   local deadline=$(( $(date +%s) + 15 ))
   until /usr/bin/log show --start "$RUN_START" --info --style compact \
       --predicate 'subsystem == "app.sungold.mac" AND category == "filter"' 2>/dev/null \
-      | grep -q "filter blocking domains=$1\$"; do
+      | grep -q "filter blocking domains=$1 grants="; do
     [[ $(date +%s) -ge $deadline ]] && { echo "$(stamp) FAIL: filter never reported domains=$1"; exit 1; }
     sleep 0.5
   done

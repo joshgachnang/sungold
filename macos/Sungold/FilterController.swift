@@ -20,11 +20,11 @@ final class FilterController: NSObject, ObservableObject {
 
     @Published private(set) var status: Status = .notInstalled
     private let logger = Logger(subsystem: "app.sungold.mac", category: "filter")
-    private var desiredDomains: [String] = []
+    private var desiredRules = FilterRules.none
     /// False until the app knows the session state. Until then the filter keeps whatever
     /// list it already has, so launching (offline or not) never lifts a block.
     private var desiredKnown = false
-    private var appliedDomains: [String]?
+    private var appliedRules: FilterRules?
 
     /// Checks whether the filter is already configured, without prompting the user.
     func refresh() {
@@ -38,9 +38,11 @@ final class FilterController: NSObject, ObservableObject {
                     self.status = .notInstalled
                 } else {
                     self.status = manager.isEnabled ? .enabled : .disabled
-                    self.appliedDomains = manager.providerConfiguration?
-                        .vendorConfiguration?[FilterConfigurationKey.blockedDomains] as? [String]
+                    self.appliedRules = FilterRules(vendorConfiguration: manager.providerConfiguration?.vendorConfiguration)
                     self.push()
+                    // Already set up: re-submit activation so a newer embedded filter replaces the
+                    // installed one. An approved extension from the same team needs no new approval.
+                    self.submitActivation()
                 }
             }
         }
@@ -48,6 +50,10 @@ final class FilterController: NSObject, ObservableObject {
 
     /// Installs the system extension (the user approves it in System Settings) and enables it.
     func install() {
+        submitActivation()
+    }
+
+    private func submitActivation() {
         let request = OSSystemExtensionRequest.activationRequest(
             forExtensionWithIdentifier: Self.extensionIdentifier, queue: .main)
         request.delegate = self
@@ -62,20 +68,21 @@ final class FilterController: NSObject, ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    /// Sets the domains the filter should block now; an empty list blocks nothing.
-    func setBlockedDomains(_ domains: [String]) {
-        desiredDomains = domains.sorted()
+    /// Sets what the filter enforces: the active session's domains and its grants.
+    /// `FilterRules.none` blocks nothing.
+    func setRules(_ rules: FilterRules) {
+        desiredRules = rules
         desiredKnown = true
         push()
     }
 
     private func push() {
-        guard status == .enabled, desiredKnown, appliedDomains != desiredDomains else { return }
-        let domains = desiredDomains
+        guard status == .enabled, desiredKnown, appliedRules != desiredRules else { return }
+        let rules = desiredRules
         NEFilterManager.shared().loadFromPreferences { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, let configuration = NEFilterManager.shared().providerConfiguration else { return }
-                configuration.vendorConfiguration = [FilterConfigurationKey.blockedDomains: domains]
+                configuration.vendorConfiguration = rules.vendorConfiguration
                 NEFilterManager.shared().providerConfiguration = configuration
                 NEFilterManager.shared().saveToPreferences { error in
                     MainActor.assumeIsolated {
@@ -83,8 +90,8 @@ final class FilterController: NSObject, ObservableObject {
                             self.logger.error("updating filter failed: \(error.localizedDescription, privacy: .public)")
                             return
                         }
-                        self.appliedDomains = domains
-                        self.logger.info("filter blocking domains=\(domains.joined(separator: ","), privacy: .public)")
+                        self.appliedRules = rules
+                        self.logger.info("filter blocking domains=\(rules.domains.joined(separator: ","), privacy: .public) grants=\(rules.grants.count)")
                         // A session may have changed while this save was in flight.
                         self.push()
                     }
@@ -107,7 +114,7 @@ final class FilterController: NSObject, ObservableObject {
                 configuration.filterPackets = false
                 // Only overwrite the list when the session state is known.
                 if self.desiredKnown || configuration.vendorConfiguration == nil {
-                    configuration.vendorConfiguration = [FilterConfigurationKey.blockedDomains: self.desiredDomains]
+                    configuration.vendorConfiguration = self.desiredRules.vendorConfiguration
                 }
                 manager.providerConfiguration = configuration
                 manager.localizedDescription = "Sungold"
@@ -120,8 +127,7 @@ final class FilterController: NSObject, ObservableObject {
                             self.logger.error("enabling filter failed: \(error.localizedDescription, privacy: .public)")
                         } else {
                             self.status = .enabled
-                            self.appliedDomains = configuration.vendorConfiguration?[
-                                FilterConfigurationKey.blockedDomains] as? [String]
+                            self.appliedRules = FilterRules(vendorConfiguration: configuration.vendorConfiguration)
                             self.logger.info("filter enabled")
                             self.push()
                         }

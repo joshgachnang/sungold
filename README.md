@@ -47,6 +47,11 @@ After backend route changes, regenerate the OpenAPI SDK:
 cd frontend && bun run sdk
 ```
 
+## Local MongoDB gotchas
+
+- **Something else on `127.0.0.1:27017`.** Editors that forward ports (Cursor does) can bind `127.0.0.1:27017`, which takes precedence over a container listening on all interfaces, so the backend quietly talks to a different database. Check with `lsof -nP -iTCP:27017 -sTCP:LISTEN`. Either stop the forward or point `MONGO_URI` straight at the container, for example `mongodb://<container IP>:27017/sungold?directConnection=true` (`directConnection` stops the driver from rediscovering the replica set member `127.0.0.1`).
+- **Live updates stop after network resets.** Add `socketTimeoutMS=30000` to `MONGO_URI` so a connection that went dead (for example when the Mac's content filter is replaced) errors out and the change stream reopens, instead of hanging silently.
+
 ## End-to-end tests
 
 With the backend running (`cd backend && bun run dev`):

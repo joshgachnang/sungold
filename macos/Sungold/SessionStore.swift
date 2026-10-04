@@ -37,6 +37,20 @@ final class SessionStore: ObservableObject {
 
     var activeSession: FocusSession? { state.activeSession }
 
+    /// What the filter should enforce: the active session's domains and every grant synced
+    /// for it. The filter verifies grants itself; unverifiable ones simply never unlock.
+    var filterRules: FilterRules { Self.filterRules(state: state, user: user) }
+
+    /// Pure form for subscribers: `@Published` emits before the property changes, so they
+    /// must build rules from the emitted values rather than reading the store.
+    nonisolated static func filterRules(state: SyncState, user: CurrentUser?) -> FilterRules {
+        guard let session = state.activeSession, let user else { return .none }
+        let grants = state.grants.values
+            .filter { $0.sessionId == session.id }
+            .map { SignedGrant(payload: $0.payload, signature: $0.signature) }
+        return FilterRules(domains: session.blockedDomains, sessionId: session.id, userId: user.id, grants: grants)
+    }
+
     /// Starts syncing with a stored token, if there is one.
     func resume() {
         #if DEBUG
@@ -95,8 +109,7 @@ final class SessionStore: ObservableObject {
                 openSocket(token: token, api: api, userId: me.id, generation: myGeneration)
             } catch APIClient.APIError.unauthorized {
                 guard isCurrent(myGeneration) else { return }
-                logger.error("device token rejected; signing out")
-                signOut()
+                await handleRejection(token: token, generation: myGeneration)
             } catch is SnapshotPager.Superseded {
                 return
             } catch {
@@ -155,7 +168,7 @@ final class SessionStore: ObservableObject {
                 Task { try? await self.catchUp(api: api, userId: userId, generation: myGeneration) }
             case .disconnected(let unauthorized):
                 if unauthorized {
-                    signOut()
+                    Task { await self.handleRejection(token: token, generation: myGeneration) }
                     return
                 }
                 status = .offline
@@ -165,6 +178,36 @@ final class SessionStore: ObservableObject {
         }
         self.socket = socket
         socket.connect()
+    }
+
+    /// Delays between re-checks of a rejected token before signing out.
+    static let rejectionRecheckDelays: [TimeInterval] = [2, 3, 5]
+
+    /// A 401 can be transient (a backend that is still starting up rejects valid sessions for
+    /// a moment), and signing out deletes the device token. So re-check /auth/me a few times
+    /// and sign out only if the token is still refused; otherwise reconnect.
+    private func handleRejection(token: String, generation myGeneration: Int) async {
+        let api = APIClient(baseURL: config.apiURL, token: token)
+        for delay in Self.rejectionRecheckDelays {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard isCurrent(myGeneration) else { return }
+            do {
+                _ = try await api.currentUser()
+                logger.info("token accepted on re-check; reconnecting")
+                start(token: token)
+                return
+            } catch APIClient.APIError.unauthorized {
+                continue
+            } catch {
+                // Offline or server error: not a rejection. Keep the token and retry later.
+                status = .offline
+                scheduleReconnect(token: token, generation: myGeneration)
+                return
+            }
+        }
+        guard isCurrent(myGeneration) else { return }
+        logger.error("device token rejected; signing out")
+        signOut()
     }
 
     /// Doubling backoff capped at 30 s: 1, 2, 4, 8, 16, 30, 30, ...

@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(SUNGOLD_FILTER_BUILD)</string>
 	<key>NSSystemExtensionUsageDescription</key>
 	<string>Sungold blocks the websites you choose during focus sessions.</string>
 	<key>NetworkExtension</key>
@@ -32,5 +32,7 @@
 			<string>$(PRODUCT_MODULE_NAME).FilterDataProvider</string>
 		</dict>
 	</dict>
+	<key>SungoldGrantPublicKey</key>
+	<string>$(SUNGOLD_GRANT_PUBLIC_KEY)</string>
 </dict>
 </plist>

@@ -9,3 +9,8 @@ SUNGOLD_CODE_SIGN_IDENTITY = Apple Development
 SUNGOLD_BUNDLE_PREFIX = app.sungold
 SUNGOLD_API_URL = http:/$()/localhost:4000
 SUNGOLD_WEB_URL = http:/$()/localhost:8093
+// Ed25519 public key (raw, base64url) that verifies unlock grants; pinned in the app and the
+// filter. This is the local development backend's key (GET /unlockGrants/publicKey).
+SUNGOLD_GRANT_PUBLIC_KEY = emqBCX0oqMjXdS2Wu8LRLR3eekEwP6_JbE62WLNg-qg
+// Filter extension build number; bump it whenever SungoldFilter changes (see project.yml).
+SUNGOLD_FILTER_BUILD = 3
