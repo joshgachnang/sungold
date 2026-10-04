@@ -15,7 +15,7 @@ import {buildBetterAuthConfig} from "../utils/betterAuthConfig";
 import {configureDeviceAuth, deviceSessionRouter} from "./deviceSessions";
 import {focusSessionRouter} from "./focusSessions";
 
-const WEB_ORIGIN = "http://localhost:8082";
+const WEB_ORIGIN = "http://localhost:8093";
 const MAC_REDIRECT = "sungold-mac://auth";
 
 describe("device sessions", () => {

@@ -1,7 +1,7 @@
 import type {AuthProvider, BetterAuthConfig} from "@terreno/api";
 
 const DEFAULT_BETTER_AUTH_URL = "http://localhost:4000";
-const DEFAULT_WEB_ORIGINS = ["http://localhost:8082", "http://127.0.0.1:8082"];
+const DEFAULT_WEB_ORIGINS = ["http://localhost:8093", "http://127.0.0.1:8093"];
 const APP_SCHEMES = ["sungold://", "exp://"];
 
 export const getAuthProvider = (): AuthProvider => {

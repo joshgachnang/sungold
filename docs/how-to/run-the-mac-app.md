@@ -40,7 +40,7 @@ To sign out a Debug build by hand, delete the file.
 | `SUNGOLD_CODE_SIGN_IDENTITY` | `-` | `-` is ad hoc; set to `Apple Development` once `DEVELOPMENT_TEAM` is set |
 | `SUNGOLD_BUNDLE_PREFIX` | `app.sungold` | Bundle ID prefix; the app is `app.sungold.mac` |
 | `SUNGOLD_API_URL` | `http://localhost:4000` | Backend |
-| `SUNGOLD_WEB_URL` | `http://localhost:8082` | Web app that runs `/device-login` |
+| `SUNGOLD_WEB_URL` | `http://localhost:8093` | Web app that runs `/device-login` |
 
 Run `xcodegen generate` again after editing `project.yml` or `Config.xcconfig`.
 

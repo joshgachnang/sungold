@@ -11,4 +11,4 @@ export const TEST_USER: TestUser = {
 };
 
 export const API_URL = process.env.E2E_API_URL ?? "http://localhost:4000";
-export const WEB_ORIGIN = process.env.E2E_BASE_URL ?? "http://localhost:8082";
+export const WEB_ORIGIN = process.env.E2E_BASE_URL ?? "http://localhost:8093";

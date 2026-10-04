@@ -6,7 +6,7 @@
 set -euo pipefail
 
 API="${API:-http://localhost:4000}"
-ORIGIN="${ORIGIN:-http://localhost:8082}"
+ORIGIN="${ORIGIN:-http://localhost:8093}"
 EMAIL="${EMAIL:-e2e-focus@example.com}"
 PASSWORD="${PASSWORD:-testpassword123}"
 MACOS_DIR="$(cd "$(dirname "$0")/.." && pwd)"

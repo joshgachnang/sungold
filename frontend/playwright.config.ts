@@ -11,14 +11,14 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   testDir: "./e2e",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8082",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8093",
     trace: "retain-on-failure",
   },
   webServer: {
     command: "bun run web",
     reuseExistingServer: true,
     timeout: 180_000,
-    url: "http://localhost:8082",
+    url: "http://localhost:8093",
   },
   workers: 1,
 });

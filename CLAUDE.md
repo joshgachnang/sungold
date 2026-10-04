@@ -17,7 +17,7 @@ cd frontend && bun install
 # Start backend (port 4000)
 cd backend && bun run dev
 
-# Start frontend (port 8082)
+# Start frontend (port 8093)
 cd frontend && bun run web
 
 # Regenerate SDK after backend changes

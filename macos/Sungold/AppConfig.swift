@@ -11,6 +11,6 @@ struct AppConfig {
         let web = (info["SungoldWebURL"] as? String).flatMap(URL.init(string:))
         return AppConfig(
             apiURL: api ?? URL(string: "http://localhost:4000")!,
-            webURL: web ?? URL(string: "http://localhost:8082")!)
+            webURL: web ?? URL(string: "http://localhost:8093")!)
     }()
 }

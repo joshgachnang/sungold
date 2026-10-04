@@ -8,4 +8,4 @@ DEVELOPMENT_TEAM = ZKQE23T646
 SUNGOLD_CODE_SIGN_IDENTITY = Apple Development
 SUNGOLD_BUNDLE_PREFIX = app.sungold
 SUNGOLD_API_URL = http:/$()/localhost:4000
-SUNGOLD_WEB_URL = http:/$()/localhost:8082
+SUNGOLD_WEB_URL = http:/$()/localhost:8093

@@ -37,17 +37,17 @@
   "name": "@sungold/frontend",
   "private": true,
   "scripts": {
-    "android": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --android --port 8082",
+    "android": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --android --port 8093",
     "compile": "tsc",
     "e2e": "playwright test",
-    "ios": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --ios --port 8082",
+    "ios": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --ios --port 8093",
     "lint": "bun biome check .",
     "lint:fix": "bun biome check --write .",
     "lint:unsafefix": "biome check --write . --unsafe",
     "sdk": "bun scripts/generate-sdk.ts && bun biome check --write scripts/generate-sdk.ts",
-    "start": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --port 8082",
+    "start": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --port 8093",
     "test": "bun test",
-    "web": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --web --port 8082"
+    "web": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --web --port 8093"
   },
   "version": "1.0.0"
 }

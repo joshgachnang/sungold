@@ -37,7 +37,7 @@ Creates `test@example.com` and `admin@example.com` (password `testpassword123`).
 # Terminal 1 — API (default port 4000)
 cd backend && bun run dev
 
-# Terminal 2 — web UI (port 8082)
+# Terminal 2 — web UI (port 8093)
 cd frontend && bun run web
 ```
 
@@ -54,7 +54,7 @@ With the backend running (`cd backend && bun run dev`):
 ```bash
 cd frontend
 bunx playwright install chromium   # once
-bun run e2e                        # starts the web app on :8082 if it is not running
+bun run e2e                        # starts the web app on :8093 if it is not running
 ```
 
 Tests live in `frontend/e2e/`. Start the web dev server without `CI=1`; that setting turns off file watching, so edits are not picked up.
