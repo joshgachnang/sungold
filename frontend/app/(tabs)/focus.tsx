@@ -1,4 +1,4 @@
-import {useQuery, useSyncStatus} from "@terreno/syncdb/react";
+import {useQuery} from "@terreno/syncdb/react";
 import {
   Box,
   Button,
@@ -13,15 +13,15 @@ import {
 } from "@terreno/ui";
 import {DateTime} from "luxon";
 import type React from "react";
-import {useCallback, useEffect, useMemo, useState, useSyncExternalStore} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {Pressable} from "react-native";
+import {useSyncLoaded} from "@/hooks/useSyncLoaded";
 import {
   useBlocklistsStarterMutation,
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
   usePostFocusSessionsMutation,
 } from "@/store/openApiSdk";
-import {getSyncDbReadySnapshot, subscribeSyncDbReady} from "@/store/syncdb";
 
 interface FocusSession {
   _id: string;
@@ -76,27 +76,6 @@ const serverErrorMessage = (error: unknown): string | undefined => {
     error as {data?: {title?: string; meta?: {fields?: Record<string, string>}}} | undefined
   )?.data;
   return data?.meta?.fields?.blockedDomains ?? data?.meta?.fields?.blocklistIds ?? data?.title;
-};
-
-// True once the sync client has started and finished its first pull, so an existing session
-// is never mistaken for "no session". start() resolves before that pull completes, while
-// isSyncing is already true; later background pulls must not bring the spinner back.
-const useSyncLoaded = (): boolean => {
-  const syncReady = useSyncExternalStore(
-    subscribeSyncDbReady,
-    getSyncDbReadySnapshot,
-    getSyncDbReadySnapshot
-  );
-  const {isSyncing} = useSyncStatus();
-  const [loaded, setLoaded] = useState<boolean>(false);
-  useEffect(() => {
-    if (!syncReady) {
-      setLoaded(false);
-    } else if (!isSyncing) {
-      setLoaded(true);
-    }
-  }, [isSyncing, syncReady]);
-  return loaded;
 };
 
 const BlocklistSelector: React.FC<{

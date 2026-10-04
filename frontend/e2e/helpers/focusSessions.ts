@@ -91,13 +91,30 @@ export const getActiveSessionsViaApi = async (
 export const startSessionViaApi = async (
   request: APIRequestContext,
   blockedDomains: string[],
-  user: TestUser = TEST_USER
-): Promise<void> => {
+  user: TestUser = TEST_USER,
+  intention?: string
+): Promise<{_id: string; blockedDomains: string[]; intention?: string}> => {
   const created = await request.post(`${API_URL}/focusSessions`, {
-    data: {blockedDomains},
+    data: {blockedDomains, ...(intention ? {intention} : {})},
     headers: {authorization: await authorizationFor(request, user)},
   });
   expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {
+    data: {_id: string; blockedDomains: string[]; intention?: string};
+  };
+  return body.data;
+};
+
+export const requestGrantViaApi = async (
+  request: APIRequestContext,
+  sessionId: string,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const granted = await request.post(`${API_URL}/focusSessions/${sessionId}/grants`, {
+    data: {minutes: 5, reason: "peek"},
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(granted.ok(), await granted.text()).toBe(true);
 };
 
 export const endActiveSessions = async (

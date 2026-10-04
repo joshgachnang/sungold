@@ -102,7 +102,7 @@ Details, files and verification for each task are in [`2026-10-04-web-dashboard-
 - [x] **T2** — Start focus sessions from blocklists plus extra domains
 - [x] **T3** — Add sidebar/tab navigation shell and the Blocklists screen
 - [x] **T4** — Add week start day and timezone to the profile
-- [ ] **T5** — Add focus-hours calculation and the History screen
+- [x] **T5** — Add focus-hours calculation and the History screen
 - [ ] **T6** — Add the parking lot with capture on the Focus screen
 - [ ] **T7** — Add the end-of-block review prompt, banner and History review
 - [ ] **T8** — Add the Today overview

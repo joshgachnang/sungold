@@ -90,6 +90,12 @@ Route: `/auth/me`.
 
 Dashboard week-boundary calculations read the signed-in user's saved `weekStartDay` and `timezone` so History and Today agree across devices when weekly summaries are rendered. Profile writes go through `PATCH /auth/me`; invalid week days or non-IANA timezone names are rejected by the user schema.
 
+### Focus hours
+
+The web dashboard computes focus hours on the client from synced `FocusSession` and `UnlockGrant` records (`frontend/utils/focusHours.ts`). Each session contributes the time from `startedAt` to `endedAt`, or to the current time while it is active. Unlock grants subtract only the portions that overlap that session, clipped again to each displayed week; overlapping grants are merged so the same minute is not subtracted twice.
+
+Weekly buckets use the signed-in user's saved `weekStartDay` and `timezone`. History shows the current week plus the previous seven weeks from those boundaries, so two devices render the same weekly totals after profile defaults have been saved.
+
 ### `UnlockGrant`
 
 Route: `/unlockGrants` (`backend/src/api/unlockGrants.ts`), read-only for the owner. Sync stream: `unlockGrants|owner:{ownerId}`. Grants are created only by `POST /focusSessions/:id/grants`; they cannot be created, edited or deleted directly, over REST or sync.
