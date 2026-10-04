@@ -68,12 +68,15 @@ Route: `/focusSessions` (`backend/src/api/focusSessions.ts`). Sync stream: `focu
 | `ownerId` | ObjectId | Set from the caller; clients cannot set it |
 | `status` | `active` \| `ended` | Server-controlled; one active session per user (409 otherwise, backed by a partial unique index) |
 | `blockedDomains` | string[] | At least one; normalized to bare lowercase hostnames (`https://www.YouTube.com/feed` → `youtube.com`), de-duplicated; invalid entries return 400 |
+| `blocklistIds` | string[] | Blocklists selected at start time; stored for display/audit, while `blockedDomains` keeps the session's immutable domain copy |
 | `intention` | string | Optional, up to 280 characters |
 | `startedAt` | Date | Set by the server on create |
 | `endsAt` | Date | Optional planned end |
 | `endedAt` | Date | Set by `POST /focusSessions/:id/end` |
 
 Owners can read, list, update `blockedDomains`/`intention`/`endsAt`, and end their sessions. Other users cannot see them. Sessions cannot be deleted.
+
+`POST /focusSessions` accepts `blocklistIds` and/or `blockedDomains`. Every blocklist id must belong to the caller. The server copies the selected blocklists' domains, appends the typed domains, normalizes and de-duplicates the combined list, and stores both the resulting `blockedDomains` and the selected `blocklistIds`. Editing a blocklist later does not change past or active sessions, and session updates cannot change the recorded `blocklistIds`.
 
 ### `UnlockGrant`
 
@@ -125,7 +128,7 @@ The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun 
 
 ## Web and iOS data path
 
-The Expo app **reads** sessions and grants through syncdb (`focusSessions` and `unlockGrants` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end` and `POST /focusSessions/:id/grants`, using the generated hooks.
+The Expo app **reads** sessions, grants and blocklists through syncdb (`focusSessions`, `unlockGrants` and `blocklists` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end`, `POST /focusSessions/:id/grants` and `POST /blocklists/starter`, using the generated hooks.
 
 Every write here is a server decision (domain normalization, one active session, ending, signing a grant). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
 

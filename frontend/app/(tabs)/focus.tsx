@@ -1,9 +1,22 @@
 import {useQuery, useSyncStatus} from "@terreno/syncdb/react";
-import {Box, Button, Card, Heading, Page, Spinner, Text, TextArea, TextField} from "@terreno/ui";
+import {
+  Box,
+  Button,
+  Card,
+  CheckBox,
+  Heading,
+  Page,
+  Spinner,
+  Text,
+  TextArea,
+  TextField,
+} from "@terreno/ui";
 import {DateTime} from "luxon";
 import type React from "react";
 import {useCallback, useEffect, useMemo, useState, useSyncExternalStore} from "react";
+import {Pressable} from "react-native";
 import {
+  useBlocklistsStarterMutation,
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
   usePostFocusSessionsMutation,
@@ -14,8 +27,16 @@ interface FocusSession {
   _id: string;
   status: "active" | "ended";
   blockedDomains: string[];
+  blocklistIds?: string[];
   intention?: string;
   startedAt: string;
+}
+
+interface Blocklist {
+  _id: string;
+  domains: string[];
+  name: string;
+  deleted?: boolean;
 }
 
 interface UnlockGrant {
@@ -54,7 +75,7 @@ const serverErrorMessage = (error: unknown): string | undefined => {
   const data = (
     error as {data?: {title?: string; meta?: {fields?: Record<string, string>}}} | undefined
   )?.data;
-  return data?.meta?.fields?.blockedDomains ?? data?.title;
+  return data?.meta?.fields?.blockedDomains ?? data?.meta?.fields?.blocklistIds ?? data?.title;
 };
 
 // True once the sync client has started and finished its first pull, so an existing session
@@ -78,38 +99,112 @@ const useSyncLoaded = (): boolean => {
   return loaded;
 };
 
-const StartSessionForm: React.FC = () => {
+const BlocklistSelector: React.FC<{
+  blocklists: Blocklist[];
+  onChange: (selected: string[]) => void;
+  value: string[];
+}> = ({blocklists, onChange, value}) => {
+  const options = useMemo(
+    () => [...blocklists].sort((a, b) => a.name.localeCompare(b.name)),
+    [blocklists]
+  );
+  const toggle = useCallback(
+    (id: string): void => {
+      onChange(value.includes(id) ? value.filter((selected) => selected !== id) : [...value, id]);
+    },
+    [onChange, value]
+  );
+
+  if (options.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box gap={2} testID="focus-blocklists-input">
+      <Heading color="primary" size="sm">
+        Blocklists
+      </Heading>
+      {options.map((blocklist) => {
+        const selected = value.includes(blocklist._id);
+        return (
+          <Pressable
+            accessibilityLabel={blocklist.name}
+            accessibilityRole="checkbox"
+            accessibilityState={{checked: selected}}
+            key={blocklist._id}
+            onPress={() => toggle(blocklist._id)}
+            style={{
+              alignItems: "center",
+              flexDirection: "row",
+              gap: 8,
+              minHeight: 36,
+            }}
+            testID={`focus-blocklist-option-${blocklist._id}`}
+          >
+            <CheckBox selected={selected} testID={`focus-blocklist-checkbox-${blocklist._id}`} />
+            <Text>{blocklist.name}</Text>
+          </Pressable>
+        );
+      })}
+      <Text color="secondaryDark">Choose saved lists, then add any one-off sites below.</Text>
+    </Box>
+  );
+};
+
+const StartSessionForm: React.FC<{
+  blocklists: Blocklist[];
+  isSeedingBlocklists: boolean;
+  onSeedStarterBlocklists: () => void;
+}> = ({blocklists, isSeedingBlocklists, onSeedStarterBlocklists}) => {
   const [startSession, {isLoading}] = usePostFocusSessionsMutation();
   const [domains, setDomains] = useState<string>("");
   const [intention, setIntention] = useState<string>("");
+  const [selectedBlocklistIds, setSelectedBlocklistIds] = useState<string[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (blocklists.length === 0 && !isSeedingBlocklists) {
+      onSeedStarterBlocklists();
+    }
+  }, [blocklists.length, isSeedingBlocklists, onSeedStarterBlocklists]);
 
   const handleStart = useCallback(async (): Promise<void> => {
     const blockedDomains = parseDomains(domains);
-    if (blockedDomains.length === 0) {
-      setError("Add at least one domain to block");
+    if (blockedDomains.length === 0 && selectedBlocklistIds.length === 0) {
+      setError("Add at least one domain or choose a blocklist");
       return;
     }
     setError(undefined);
     const result = await startSession({
-      blockedDomains,
+      ...(blockedDomains.length > 0 ? {blockedDomains} : {}),
+      ...(selectedBlocklistIds.length > 0 ? {blocklistIds: selectedBlocklistIds} : {}),
       ...(intention.trim() ? {intention: intention.trim()} : {}),
     });
     if ("error" in result && result.error) {
       setError(serverErrorMessage(result.error) ?? "Could not start the session. Try again.");
     }
-  }, [domains, intention, startSession]);
+  }, [domains, intention, selectedBlocklistIds, startSession]);
 
   return (
     <Card>
       <Box gap={3}>
         <Heading size="sm">Start a focus session</Heading>
+        {isSeedingBlocklists ? (
+          <Box testID="focus-blocklists-loading">
+            <Text color="secondaryDark">Loading starter blocklists...</Text>
+          </Box>
+        ) : null}
+        <BlocklistSelector
+          blocklists={blocklists}
+          onChange={setSelectedBlocklistIds}
+          value={selectedBlocklistIds}
+        />
         <TextArea
           errorText={error}
           helperText="One per line or comma-separated, e.g. youtube.com, x.com"
           onChange={setDomains}
           testIDs={{error: "focus-domain-error", input: "focus-domain-input"}}
-          title="Sites to block"
+          title="Extra sites to block"
           value={domains}
         />
         <TextField
@@ -237,10 +332,22 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
 
 const FocusScreen: React.FC = () => {
   const loaded = useSyncLoaded();
+  const [seedStarterBlocklists, {isLoading: isSeedingBlocklists}] = useBlocklistsStarterMutation();
+  const [seedAttempted, setSeedAttempted] = useState<boolean>(false);
   const activeSessions = useQuery<FocusSession>("focusSessions", {
     filter: (session) => session.status === "active",
   });
+  const blocklists = useQuery<Blocklist>("blocklists", {
+    filter: (blocklist) => !blocklist.deleted,
+  });
   const session = activeSessions[0];
+  const handleSeedStarterBlocklists = useCallback((): void => {
+    if (seedAttempted) {
+      return;
+    }
+    setSeedAttempted(true);
+    void seedStarterBlocklists(undefined);
+  }, [seedAttempted, seedStarterBlocklists]);
 
   return (
     <Page navigation={undefined} title="Focus">
@@ -252,7 +359,11 @@ const FocusScreen: React.FC = () => {
         ) : session ? (
           <ActiveSession session={session} />
         ) : (
-          <StartSessionForm />
+          <StartSessionForm
+            blocklists={blocklists}
+            isSeedingBlocklists={isSeedingBlocklists}
+            onSeedStarterBlocklists={handleSeedStarterBlocklists}
+          />
         )}
       </Box>
     </Page>

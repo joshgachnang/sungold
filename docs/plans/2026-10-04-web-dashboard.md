@@ -99,7 +99,7 @@ The Sungold Expo app (web and iOS) becomes a usable focus dashboard: a **Today**
 Details, files and verification for each task are in [`2026-10-04-web-dashboard-tasks.md`](2026-10-04-web-dashboard-tasks.md). Order: T1 first; T2 needs T1; T5 needs T4; T6 and T9 need T3; T7 needs T6; T8 needs T5 and T7.
 
 - [x] **T1** — Add Blocklist model, synced route and starter presets
-- [ ] **T2** — Start focus sessions from blocklists plus extra domains
+- [x] **T2** — Start focus sessions from blocklists plus extra domains
 - [ ] **T3** — Add sidebar/tab navigation shell and the Blocklists screen
 - [ ] **T4** — Add week start day and timezone to the profile
 - [ ] **T5** — Add focus-hours calculation and the History screen

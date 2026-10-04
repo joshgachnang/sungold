@@ -17,6 +17,7 @@ export interface FocusSessionDocument extends mongoose.Document<string> {
   ownerId: mongoose.Types.ObjectId;
   status: FocusSessionStatus;
   blockedDomains: string[];
+  blocklistIds: string[];
   intention?: string;
   startedAt: Date;
   endsAt?: Date;

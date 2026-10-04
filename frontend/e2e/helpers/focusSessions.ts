@@ -3,13 +3,44 @@ import {API_URL, TEST_USER, type TestUser, WEB_ORIGIN} from "../fixtures/testUse
 
 // Ends every active focus session for the user through the API, so each test starts from
 // "no active session" regardless of what a previous test or run left behind.
-const authorizationFor = async (request: APIRequestContext, user: TestUser): Promise<string> => {
+export const authorizationFor = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<string> => {
   const signIn = await request.post(`${API_URL}/api/auth/sign-in/email`, {
     data: {email: user.email, password: user.password},
     headers: {origin: WEB_ORIGIN},
   });
   expect(signIn.ok(), await signIn.text()).toBe(true);
   return `Bearer ${signIn.headers()["set-auth-token"]}`;
+};
+
+export const createBlocklistViaApi = async (
+  request: APIRequestContext,
+  data: {domains: string[]; name: string},
+  user: TestUser = TEST_USER
+): Promise<{_id: string; domains: string[]; name: string}> => {
+  const created = await request.post(`${API_URL}/blocklists`, {
+    data,
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {data: {_id: string; domains: string[]; name: string}};
+  return body.data;
+};
+
+export const getActiveSessionsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; blockedDomains: string[]; blocklistIds?: string[]}[]> => {
+  const list = await request.get(`${API_URL}/focusSessions?status=active`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(list.ok(), await list.text()).toBe(true);
+  const body = (await list.json()) as {
+    data: {_id: string; blockedDomains: string[]; blocklistIds?: string[]}[];
+  };
+  return body.data;
 };
 
 // Starts a session through the API, as another device would.

@@ -15,6 +15,11 @@ const focusSessionSchema = new mongoose.Schema<FocusSessionDocument, FocusSessio
       description: "Normalized hostnames blocked while the session is active, e.g. youtube.com",
       type: [String],
     },
+    blocklistIds: {
+      default: [],
+      description: "Blocklists selected when this session was started",
+      type: [String],
+    },
     endedAt: {
       description: "When the session was ended; unset while active",
       type: Date,

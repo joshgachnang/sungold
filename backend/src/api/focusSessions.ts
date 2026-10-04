@@ -1,7 +1,9 @@
 import {APIError, modelRouter, OwnerQueryFilter, Permissions, z} from "@terreno/api";
 import mongoose from "mongoose";
+import {Blocklist} from "../models/blocklist";
 import {FocusSession} from "../models/focusSession";
 import {UnlockGrant} from "../models/unlockGrant";
+import type {BlocklistDocument} from "../types/models/blocklistTypes";
 import type {FocusSessionDocument} from "../types/models/focusSessionTypes";
 import type {UserDocument} from "../types/models/userTypes";
 import {normalizeDomains} from "../utils/domains";
@@ -34,6 +36,78 @@ const cleanDomains = (value: unknown): string[] => {
     });
   }
   return domains;
+};
+
+const cleanBlocklistIds = (value: unknown): string[] => {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new APIError({
+      fields: {blocklistIds: "Blocklist ids must be an array"},
+      status: 400,
+      title: "Invalid blocklists",
+    });
+  }
+  return Array.from(
+    new Set(
+      value.map((id) => {
+        const blocklistId = typeof id === "string" ? id.trim() : "";
+        if (!blocklistId) {
+          throw new APIError({
+            fields: {blocklistIds: "Blocklist ids must be non-empty strings"},
+            status: 400,
+            title: "Invalid blocklists",
+          });
+        }
+        return blocklistId;
+      })
+    )
+  );
+};
+
+const domainsFromSelectedBlocklists = async (
+  blocklistIds: string[],
+  ownerId: UserDocument["_id"] | undefined
+): Promise<string[]> => {
+  if (blocklistIds.length === 0) {
+    return [];
+  }
+  const blocklists = await Blocklist.find({
+    _id: {$in: blocklistIds},
+    deleted: false,
+    ownerId,
+  }).exec();
+  if (blocklists.length !== blocklistIds.length) {
+    throw new APIError({
+      fields: {blocklistIds: "Choose blocklists from your account"},
+      status: 400,
+      title: "Invalid blocklists",
+    });
+  }
+  const byId = new Map(blocklists.map((blocklist) => [blocklist._id, blocklist]));
+  return blocklistIds.flatMap((id) => (byId.get(id) as BlocklistDocument).domains);
+};
+
+const cleanStartDomains = async (
+  value: Partial<FocusSessionDocument>,
+  ownerId: UserDocument["_id"] | undefined
+): Promise<{blockedDomains: string[]; blocklistIds: string[]}> => {
+  const blocklistIds = cleanBlocklistIds(value.blocklistIds);
+  const listDomains = await domainsFromSelectedBlocklists(blocklistIds, ownerId);
+  if (value.blockedDomains === undefined) {
+    if (listDomains.length === 0) {
+      return {blockedDomains: cleanDomains(undefined), blocklistIds};
+    }
+    return {blockedDomains: cleanDomains(listDomains), blocklistIds};
+  }
+  if (!Array.isArray(value.blockedDomains)) {
+    return {blockedDomains: cleanDomains(value.blockedDomains), blocklistIds};
+  }
+  return {
+    blockedDomains: cleanDomains([...listDomains, ...value.blockedDomains]),
+    blocklistIds,
+  };
 };
 
 export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
@@ -103,7 +177,7 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
   preCreate: async (body, req) => {
     const ownerId = (req as unknown as {user?: UserDocument}).user?._id;
     const value = (body ?? {}) as Partial<FocusSessionDocument>;
-    const blockedDomains = cleanDomains(value.blockedDomains);
+    const {blockedDomains, blocklistIds} = await cleanStartDomains(value, ownerId);
     const active = await FocusSession.findOne({deleted: false, ownerId, status: "active"});
     if (active) {
       throw new APIError({status: 409, title: "A focus session is already active"});
@@ -113,6 +187,7 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
     return {
       ...(value._id ? {_id: value._id} : {}),
       blockedDomains,
+      blocklistIds,
       ...(value.endsAt !== undefined ? {endsAt: value.endsAt} : {}),
       ...(value.intention !== undefined ? {intention: value.intention} : {}),
       ownerId,
@@ -143,7 +218,7 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
   sync: {scope: {type: "owner"}},
   validation: {
     excludeFromCreate: ["ownerId", "status", "startedAt", "endedAt"],
-    excludeFromUpdate: ["ownerId", "status", "startedAt", "endedAt"],
+    excludeFromUpdate: ["ownerId", "status", "startedAt", "endedAt", "blocklistIds"],
     validateCreate: true,
     validateQuery: true,
     validateUpdate: true,

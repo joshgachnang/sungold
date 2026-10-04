@@ -4,6 +4,7 @@ import {assert} from "chai";
 import supertest from "supertest";
 import {User} from "../models/user";
 import type {UserDocument} from "../types/models/userTypes";
+import {blocklistRouter} from "./blocklists";
 import {focusSessionRouter} from "./focusSessions";
 
 const createUser = async (label: string): Promise<UserDocument> => {
@@ -25,6 +26,7 @@ describe("focus sessions", () => {
   beforeAll(() => {
     configureOpenApiValidator();
     app = new TerrenoApp({skipListen: true, userModel: User as never})
+      .register(blocklistRouter)
       .register(focusSessionRouter)
       .build();
   });
@@ -47,6 +49,52 @@ describe("focus sessions", () => {
     assert.equal(session.intention, "Finish the auth migration");
     assert.isString(session.startedAt);
     assert.isString(session._id);
+  });
+
+  it("starts from the caller's blocklists plus extra typed domains", async () => {
+    const auth = await authHeader(await createUser("blocklist-start"));
+    const social = await supertest(app)
+      .post("/blocklists")
+      .set("Authorization", auth)
+      .send({domains: ["x.com", "reddit.com"], name: "Social"});
+    const video = await supertest(app)
+      .post("/blocklists")
+      .set("Authorization", auth)
+      .send({domains: ["youtube.com", "reddit.com"], name: "Video"});
+
+    const started = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({
+        blockedDomains: ["https://www.YouTube.com/feed", "news.ycombinator.com"],
+        blocklistIds: [social.body.data._id, video.body.data._id],
+        intention: "Write the dashboard notes",
+      });
+
+    assert.equal(started.status, 201, JSON.stringify(started.body));
+    assert.deepEqual(started.body.data.blocklistIds, [social.body.data._id, video.body.data._id]);
+    assert.deepEqual(started.body.data.blockedDomains, [
+      "x.com",
+      "reddit.com",
+      "youtube.com",
+      "news.ycombinator.com",
+    ]);
+  });
+
+  it("rejects blocklist ids the caller does not own", async () => {
+    const ownerAuth = await authHeader(await createUser("blocklist-owner"));
+    const otherAuth = await authHeader(await createUser("blocklist-other"));
+    const otherList = await supertest(app)
+      .post("/blocklists")
+      .set("Authorization", otherAuth)
+      .send({domains: ["example.com"], name: "Other"});
+
+    const started = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", ownerAuth)
+      .send({blockedDomains: ["x.com"], blocklistIds: [otherList.body.data._id]});
+
+    assert.equal(started.status, 400, JSON.stringify(started.body));
   });
 
   it("rejects a session with no domains or an invalid domain", async () => {

@@ -712,6 +712,8 @@ export type PostFocusSessionsRes = /** status 201 Successful create */ {
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -740,6 +742,8 @@ export type PostFocusSessionsArgs = {
   _id?: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -769,6 +773,8 @@ export type GetFocusSessionsRes = /** status 200 Successful list */ {
     _id: string;
     /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
     blockedDomains?: string[];
+    /** Blocklists selected when this session was started */
+    blocklistIds?: string[];
     /** When the session was ended; unset while active */
     endedAt?: string;
     /** Optional planned end time for the session */
@@ -815,6 +821,8 @@ export type GetFocusSessionsByIdRes = /** status 200 Successful read */ {
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -844,6 +852,8 @@ export type PatchFocusSessionsByIdRes = /** status 200 Successful update */ {
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -874,6 +884,8 @@ export type PatchFocusSessionsByIdArgs = {
     _id?: string;
     /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
     blockedDomains?: string[];
+    /** Blocklists selected when this session was started */
+    blocklistIds?: string[];
     /** When the session was ended; unset while active */
     endedAt?: string;
     /** Optional planned end time for the session */
