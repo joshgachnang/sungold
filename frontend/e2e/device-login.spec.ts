@@ -3,8 +3,10 @@ import {API_URL} from "./fixtures/testUsers";
 import {revokeDeviceSessions} from "./helpers/focusSessions";
 import {loginAs} from "./helpers/login";
 
+// A name no real device uses, so cleanup only revokes sessions these tests created.
+const TEST_DEVICE_NAME = "Sungold e2e test device";
 const DEVICE_LOGIN_PATH =
-  "/device-login?client=mac&redirect=sungold-mac%3A%2F%2Fauth&state=e2e-state-123&name=Test%20Mac";
+  "/device-login?client=mac&redirect=sungold-mac%3A%2F%2Fauth&state=e2e-state-123&name=Sungold%20e2e%20test%20device";
 
 // Chromium does not navigate to sungold-mac://, but DevTools reports the attempt.
 const captureAppRedirect = async (page: Page): Promise<() => Promise<string>> => {
@@ -24,7 +26,7 @@ const captureAppRedirect = async (page: Page): Promise<() => Promise<string>> =>
 
 test.describe("Device sign-in", () => {
   test.afterEach(async ({request}) => {
-    await revokeDeviceSessions(request);
+    await revokeDeviceSessions(request, TEST_DEVICE_NAME);
   });
 
   test("signed-in user can approve the Mac and it receives a working token", async ({
@@ -35,7 +37,7 @@ test.describe("Device sign-in", () => {
     const waitForRedirect = await captureAppRedirect(page);
     await page.goto(DEVICE_LOGIN_PATH);
     await page.getByTestId("device-login-approve").waitFor({state: "visible"});
-    await expect(page.getByTestId("device-login-approve")).toContainText("Test Mac");
+    await expect(page.getByTestId("device-login-approve")).toContainText(TEST_DEVICE_NAME);
 
     await page.getByTestId("device-login-approve-button").click();
     const redirectUrl = new URL(await waitForRedirect());
