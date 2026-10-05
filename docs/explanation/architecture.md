@@ -40,8 +40,25 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
 
 | Model | Owner | Synced | Purpose |
 | --- | --- | --- | --- |
+| `Blocklist` | user | yes, owner stream | Saved sets of distracting domains used to start focus sessions |
 | `FocusSession` | user | yes, owner stream | An active or ended block: domains, intention, timing |
+| `ParkingLotItem` | user | yes, owner stream | Stray thoughts captured during an active focus session |
 | `UnlockGrant` | user | yes, owner stream | A signed, expiring permission to lift a session's block |
+| `User` profile settings | user | no | Week start day and timezone used for dashboard week boundaries |
+
+### `Blocklist`
+
+Route: `/blocklists` (`backend/src/api/blocklists.ts`). Sync stream: `blocklists|owner:{ownerId}`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | String so offline sync clients can mint ids |
+| `ownerId` | ObjectId | Set from the caller; clients cannot set it |
+| `name` | string | User-visible name, 1-60 characters |
+| `domains` | string[] | 1-200 normalized bare lowercase hostnames, de-duplicated |
+| `source` | `starter` \| `user` | Starter presets are editable copies owned by the user |
+
+Owners can create, list, read, update and delete their own blocklists. Other users cannot see them. `POST /blocklists/starter` copies the Social, News and Video starter presets once per user and returns that user's starter lists; the seed flag prevents recreating deleted or renamed starters.
 
 ### `FocusSession`
 
@@ -53,12 +70,51 @@ Route: `/focusSessions` (`backend/src/api/focusSessions.ts`). Sync stream: `focu
 | `ownerId` | ObjectId | Set from the caller; clients cannot set it |
 | `status` | `active` \| `ended` | Server-controlled; one active session per user (409 otherwise, backed by a partial unique index) |
 | `blockedDomains` | string[] | At least one; normalized to bare lowercase hostnames (`https://www.YouTube.com/feed` → `youtube.com`), de-duplicated; invalid entries return 400 |
+| `blocklistIds` | string[] | Blocklists selected at start time; stored for display/audit, while `blockedDomains` keeps the session's immutable domain copy |
 | `intention` | string | Optional, up to 280 characters |
+| `review` | object | End-of-block review `{done, note, reviewedAt}` set by `POST /focusSessions/:id/review` |
+| `reviewSkippedAt` | Date | Set by `POST /focusSessions/:id/review/skip` when the user skips the prompt |
 | `startedAt` | Date | Set by the server on create |
 | `endsAt` | Date | Optional planned end |
 | `endedAt` | Date | Set by `POST /focusSessions/:id/end` |
 
 Owners can read, list, update `blockedDomains`/`intention`/`endsAt`, and end their sessions. Other users cannot see them. Sessions cannot be deleted.
+
+`POST /focusSessions` accepts `blocklistIds` and/or `blockedDomains`. Every blocklist id must belong to the caller. The server copies the selected blocklists' domains, appends the typed domains, normalizes and de-duplicates the combined list, and stores both the resulting `blockedDomains` and the selected `blocklistIds`. Editing a blocklist later does not change past or active sessions, and session updates cannot change the recorded `blocklistIds`.
+
+`POST /focusSessions/:id/review` accepts `{"done":"...","note":"...","items":[{"id":"...","status":"done"}]}` for the owner's ended session only. A session can be reviewed or skipped once. Review items marked `done` or `dismissed` set `resolvedAt`; items left `open` carry forward to future sessions. `POST /focusSessions/:id/review/skip` records `reviewSkippedAt` without changing parking-lot items.
+
+### Profile Calendar Settings
+
+Route: `/auth/me`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `weekStartDay` | number | Integer `0`-`6`, where Sunday is `0` and Monday is `1` |
+| `timezone` | string | Valid IANA timezone, such as `America/Los_Angeles` |
+
+Dashboard week-boundary calculations read the signed-in user's saved `weekStartDay` and `timezone` so History and Today agree across devices when weekly summaries are rendered. Profile writes go through `PATCH /auth/me`; invalid week days or non-IANA timezone names are rejected by the user schema.
+
+### Focus hours
+
+The web dashboard computes focus hours on the client from synced `FocusSession` and `UnlockGrant` records (`frontend/utils/focusHours.ts`). Each session contributes the time from `startedAt` to `endedAt`, or to the current time while it is active. Unlock grants subtract only the portions that overlap that session, clipped again to each displayed week; overlapping grants are merged so the same minute is not subtracted twice.
+
+Weekly buckets use the signed-in user's saved `weekStartDay` and `timezone`. History shows the current week plus the previous seven weeks from those boundaries, and Today shows the current week compared with the previous week from the same utility, so two devices render the same weekly totals after profile defaults have been saved.
+
+### `ParkingLotItem`
+
+Route: `/parkingLotItems` (`backend/src/api/parkingLotItems.ts`). Sync stream: `parkingLotItems|owner:{ownerId}`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | String so offline sync clients can mint ids |
+| `ownerId` | ObjectId | Set from the caller; clients cannot set it |
+| `sessionId` | string | Focus session where the item was captured |
+| `text` | string | Captured thought, 1-280 characters |
+| `status` | `open` \| `done` \| `dismissed` | Open items stay visible; review resolves done or dismissed items |
+| `resolvedAt` | Date | Set when an item is marked done or dismissed |
+
+Owners can create an item only for their own active session. The Focus screen reads open items through sync, so items captured earlier and still open appear during the current active session too. Resolution is owner-only and sets `resolvedAt`; end-of-block review is the normal workflow that marks items done, dismisses them, or carries them forward as open.
 
 ### `UnlockGrant`
 
@@ -110,9 +166,9 @@ The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun 
 
 ## Web and iOS data path
 
-The Expo app **reads** sessions and grants through syncdb (`focusSessions` and `unlockGrants` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end` and `POST /focusSessions/:id/grants`, using the generated hooks.
+The Expo app **reads** sessions, grants, blocklists and parking-lot items through syncdb (`focusSessions`, `unlockGrants`, `blocklists` and `parkingLotItems` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end`, `POST /focusSessions/:id/grants`, `POST /focusSessions/:id/review`, `POST /focusSessions/:id/review/skip`, `POST /blocklists/starter` and `POST /parkingLotItems`, using generated hooks plus a small app endpoint wrapper for the custom skip route.
 
-Every write here is a server decision (domain normalization, one active session, ending, signing a grant). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
+Every write here is a server decision (domain normalization, one active session, ending, signing a grant, active-session ownership for parking-lot capture). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
 
 ## Mac data path
 

@@ -50,4 +50,7 @@ export type UserDocument = DefaultDoc &
     betterAuthId?: string;
     email: string;
     name: string;
+    starterBlocklistsSeededAt?: Date;
+    timezone?: string;
+    weekStartDay?: number;
   };

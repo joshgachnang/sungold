@@ -1,18 +1,6 @@
-import {Box, Heading, Page, Text} from "@terreno/ui";
+import {Redirect} from "expo-router";
 import type React from "react";
 
-const HomeScreen: React.FC = () => {
-  return (
-    <Page navigation={undefined} title="Home">
-      <Box gap={4} padding={4}>
-        <Heading>Welcome to Sungold</Heading>
-        <Text>Your app is ready for development!</Text>
-        <Text color="secondaryDark">
-          Start by adding models to the backend and screens to the frontend.
-        </Text>
-      </Box>
-    </Page>
-  );
-};
+const HomeScreen = (): React.ReactElement => <Redirect href="/today" />;
 
 export default HomeScreen;

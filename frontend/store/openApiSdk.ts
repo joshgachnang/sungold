@@ -2,7 +2,9 @@
 import {emptySplitApi as api} from "./betterAuthApi";
 export const addTagTypes = [
   "users",
+  "blocklists",
   "focussessions",
+  "parkinglotitems",
   "unlockgrants",
   "devicesessions",
   "admin",
@@ -29,11 +31,22 @@ const injectedRtkApi = api
         providesTags: ["adminMigrations"],
         query: () => ({url: `/admin/migrations/status`}),
       }),
+      blocklistsStarter: build.mutation<BlocklistsStarterRes, BlocklistsStarterArgs>({
+        invalidatesTags: ["blocklists"],
+        query: () => ({method: "POST", url: `/blocklists/starter`}),
+      }),
       deleteAdminUsersById: build.mutation<DeleteAdminUsersByIdRes, DeleteAdminUsersByIdArgs>({
         invalidatesTags: ["users"],
         query: (queryArg) => ({
           method: "DELETE",
           url: `/admin/users/${queryArg}`,
+        }),
+      }),
+      deleteBlocklistsById: build.mutation<DeleteBlocklistsByIdRes, DeleteBlocklistsByIdArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          method: "DELETE",
+          url: `/blocklists/${queryArg}`,
         }),
       }),
       deleteOrgsById: build.mutation<DeleteOrgsByIdRes, DeleteOrgsByIdArgs>({
@@ -84,6 +97,24 @@ const injectedRtkApi = api
           url: `/focusSessions/${queryArg.id}/grants`,
         }),
       }),
+      focussessionsReview: build.mutation<FocussessionsReviewRes, FocussessionsReviewArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "POST",
+          url: `/focusSessions/${queryArg.id}/review`,
+        }),
+      }),
+      focussessionsSkipReview: build.mutation<
+        FocussessionsSkipReviewRes,
+        FocussessionsSkipReviewArgs
+      >({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          method: "POST",
+          url: `/focusSessions/${queryArg}/skipReview`,
+        }),
+      }),
       getAdminConfig: build.query<GetAdminConfigRes, GetAdminConfigArgs>({
         providesTags: ["admin"],
         query: () => ({url: `/admin/config`}),
@@ -108,6 +139,23 @@ const injectedRtkApi = api
       getAdminUsersById: build.query<GetAdminUsersByIdRes, GetAdminUsersByIdArgs>({
         providesTags: ["users"],
         query: (queryArg) => ({url: `/admin/users/${queryArg}`}),
+      }),
+      getBlocklists: build.query<GetBlocklistsRes, GetBlocklistsArgs>({
+        providesTags: ["blocklists"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sort: queryArg.sort,
+            source: queryArg.source,
+          },
+          url: `/blocklists/`,
+        }),
+      }),
+      getBlocklistsById: build.query<GetBlocklistsByIdRes, GetBlocklistsByIdArgs>({
+        providesTags: ["blocklists"],
+        query: (queryArg) => ({url: `/blocklists/${queryArg}`}),
       }),
       getDeviceSessions: build.query<GetDeviceSessionsRes, GetDeviceSessionsArgs>({
         providesTags: ["devicesessions"],
@@ -158,6 +206,24 @@ const injectedRtkApi = api
         providesTags: ["organizations"],
         query: () => ({url: `/orgs/mine`}),
       }),
+      getParkingLotItems: build.query<GetParkingLotItemsRes, GetParkingLotItemsArgs>({
+        providesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sessionId: queryArg.sessionId,
+            sort: queryArg.sort,
+            status: queryArg.status,
+          },
+          url: `/parkingLotItems/`,
+        }),
+      }),
+      getParkingLotItemsById: build.query<GetParkingLotItemsByIdRes, GetParkingLotItemsByIdArgs>({
+        providesTags: ["parkinglotitems"],
+        query: (queryArg) => ({url: `/parkingLotItems/${queryArg}`}),
+      }),
       getUnlockGrants: build.query<GetUnlockGrantsRes, GetUnlockGrantsArgs>({
         providesTags: ["unlockgrants"],
         query: (queryArg) => ({
@@ -201,6 +267,14 @@ const injectedRtkApi = api
           url: `/admin/users/${queryArg.id}`,
         }),
       }),
+      patchBlocklistsById: build.mutation<PatchBlocklistsByIdRes, PatchBlocklistsByIdArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "PATCH",
+          url: `/blocklists/${queryArg.id}`,
+        }),
+      }),
       patchFocusSessionsById: build.mutation<PatchFocusSessionsByIdRes, PatchFocusSessionsByIdArgs>(
         {
           invalidatesTags: ["focussessions"],
@@ -228,6 +302,17 @@ const injectedRtkApi = api
           body: queryArg.body,
           method: "PATCH",
           url: `/orgs/${queryArg.id}/members/${queryArg.memberId}`,
+        }),
+      }),
+      patchParkingLotItemsById: build.mutation<
+        PatchParkingLotItemsByIdRes,
+        PatchParkingLotItemsByIdArgs
+      >({
+        invalidatesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "PATCH",
+          url: `/parkingLotItems/${queryArg.id}`,
         }),
       }),
       patchUsersById: build.mutation<PatchUsersByIdRes, PatchUsersByIdArgs>({
@@ -268,6 +353,14 @@ const injectedRtkApi = api
           url: `/admin/users/bulk-patch`,
         }),
       }),
+      postBlocklists: build.mutation<PostBlocklistsRes, PostBlocklistsArgs>({
+        invalidatesTags: ["blocklists"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/blocklists/`,
+        }),
+      }),
       postFocusSessions: build.mutation<PostFocusSessionsRes, PostFocusSessionsArgs>({
         invalidatesTags: ["focussessions"],
         query: (queryArg) => ({
@@ -290,6 +383,14 @@ const injectedRtkApi = api
           body: queryArg.body,
           method: "POST",
           url: `/orgs/${queryArg.id}/members`,
+        }),
+      }),
+      postParkingLotItems: build.mutation<PostParkingLotItemsRes, PostParkingLotItemsArgs>({
+        invalidatesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/parkingLotItems/`,
         }),
       }),
       postUsers: build.mutation<PostUsersRes, PostUsersArgs>({
@@ -318,6 +419,12 @@ export type PostUsersRes = /** status 201 Successful create */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -337,6 +444,12 @@ export type PostUsersArgs = {
   email?: string;
   /** The user's display name */
   name?: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -357,6 +470,12 @@ export type GetUsersRes = /** status 200 Successful list */ {
     email: string;
     /** The user's display name */
     name: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id: string;
     hash?: string;
     salt?: string;
@@ -399,6 +518,12 @@ export type GetUsersByIdRes = /** status 200 Successful read */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -419,6 +544,12 @@ export type PatchUsersByIdRes = /** status 200 Successful update */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -440,6 +571,12 @@ export type PatchUsersByIdArgs = {
     email?: string;
     /** The user's display name */
     name?: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id?: string;
     hash?: string;
     salt?: string;
@@ -453,6 +590,189 @@ export type PatchUsersByIdArgs = {
 };
 export type DeleteUsersByIdRes = unknown;
 export type DeleteUsersByIdArgs = string;
+export type BlocklistsStarterRes = /** status 200 Successful response */ {
+  data: {
+    _id: string;
+    created?: string;
+    deleted?: boolean;
+    domains: string[];
+    name: string;
+    ownerId: string;
+    source: "starter" | "user";
+    starterKey?: string;
+    updated?: string;
+  }[];
+};
+export type BlocklistsStarterArgs = undefined;
+export type PostBlocklistsRes = /** status 201 Successful create */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PostBlocklistsArgs = {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id?: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name?: string;
+  /** The user who owns this blocklist */
+  ownerId?: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source?: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated?: string;
+  /** When this document was created */
+  created?: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetBlocklistsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id: string;
+    /** Normalized hostnames included in this blocklist */
+    domains?: string[];
+    /** The user-visible blocklist name */
+    name: string;
+    /** The user who owns this blocklist */
+    ownerId: string;
+    /** Whether this blocklist started from a preset or was created by the user */
+    source: "starter" | "user";
+    /** Stable preset key used to make starter blocklist seeding idempotent */
+    starterKey?: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetBlocklistsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  source?:
+    | ("starter" | "user")
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetBlocklistsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetBlocklistsByIdArgs = string;
+export type PatchBlocklistsByIdRes = /** status 200 Successful update */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames included in this blocklist */
+  domains?: string[];
+  /** The user-visible blocklist name */
+  name: string;
+  /** The user who owns this blocklist */
+  ownerId: string;
+  /** Whether this blocklist started from a preset or was created by the user */
+  source: "starter" | "user";
+  /** Stable preset key used to make starter blocklist seeding idempotent */
+  starterKey?: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PatchBlocklistsByIdArgs = {
+  id: string;
+  body: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id?: string;
+    /** Normalized hostnames included in this blocklist */
+    domains?: string[];
+    /** The user-visible blocklist name */
+    name?: string;
+    /** The user who owns this blocklist */
+    ownerId?: string;
+    /** Whether this blocklist started from a preset or was created by the user */
+    source?: "starter" | "user";
+    /** Stable preset key used to make starter blocklist seeding idempotent */
+    starterKey?: string;
+    /** When this document was last updated */
+    updated?: string;
+    /** When this document was created */
+    created?: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  };
+};
+export type DeleteBlocklistsByIdRes = unknown;
+export type DeleteBlocklistsByIdArgs = string;
 export type FocussessionsEndRes = /** status 200 Successful response */ {
   data?: object;
 };
@@ -467,11 +787,31 @@ export type FocussessionsGrantsArgs = {
     reason?: "peek";
   };
 };
+export type FocussessionsReviewRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsReviewArgs = {
+  id: string;
+  body: {
+    done?: string;
+    items?: {
+      id: string;
+      status: "open" | "done" | "dismissed";
+    }[];
+    note?: string;
+  };
+};
+export type FocussessionsSkipReviewRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsSkipReviewArgs = string;
 export type PostFocusSessionsRes = /** status 201 Successful create */ {
   /** The document id (String so offline sync clients can mint ids) */
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -480,6 +820,16 @@ export type PostFocusSessionsRes = /** status 201 Successful create */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -500,6 +850,8 @@ export type PostFocusSessionsArgs = {
   _id?: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -508,6 +860,16 @@ export type PostFocusSessionsArgs = {
   intention?: string;
   /** The user who owns this session */
   ownerId?: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt?: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -529,6 +891,8 @@ export type GetFocusSessionsRes = /** status 200 Successful list */ {
     _id: string;
     /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
     blockedDomains?: string[];
+    /** Blocklists selected when this session was started */
+    blocklistIds?: string[];
     /** When the session was ended; unset while active */
     endedAt?: string;
     /** Optional planned end time for the session */
@@ -537,6 +901,16 @@ export type GetFocusSessionsRes = /** status 200 Successful list */ {
     intention?: string;
     /** The user who owns this session */
     ownerId: string;
+    review?: {
+      /** What got done during the session */
+      done?: string;
+      /** One-line end-of-block review note */
+      note?: string;
+      /** When the session review was submitted */
+      reviewedAt?: string;
+    };
+    /** When the end-of-block review prompt was skipped */
+    reviewSkippedAt?: string;
     /** When the session started */
     startedAt: string;
     /** Whether the session is currently blocking (active) or finished (ended) */
@@ -575,6 +949,8 @@ export type GetFocusSessionsByIdRes = /** status 200 Successful read */ {
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -583,6 +959,16 @@ export type GetFocusSessionsByIdRes = /** status 200 Successful read */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -604,6 +990,8 @@ export type PatchFocusSessionsByIdRes = /** status 200 Successful update */ {
   _id: string;
   /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
   blockedDomains?: string[];
+  /** Blocklists selected when this session was started */
+  blocklistIds?: string[];
   /** When the session was ended; unset while active */
   endedAt?: string;
   /** Optional planned end time for the session */
@@ -612,6 +1000,16 @@ export type PatchFocusSessionsByIdRes = /** status 200 Successful update */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -634,6 +1032,8 @@ export type PatchFocusSessionsByIdArgs = {
     _id?: string;
     /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
     blockedDomains?: string[];
+    /** Blocklists selected when this session was started */
+    blocklistIds?: string[];
     /** When the session was ended; unset while active */
     endedAt?: string;
     /** Optional planned end time for the session */
@@ -642,10 +1042,192 @@ export type PatchFocusSessionsByIdArgs = {
     intention?: string;
     /** The user who owns this session */
     ownerId?: string;
+    review?: {
+      /** What got done during the session */
+      done?: string;
+      /** One-line end-of-block review note */
+      note?: string;
+      /** When the session review was submitted */
+      reviewedAt?: string;
+    };
+    /** When the end-of-block review prompt was skipped */
+    reviewSkippedAt?: string;
     /** When the session started */
     startedAt?: string;
     /** Whether the session is currently blocking (active) or finished (ended) */
     status?: "active" | "ended";
+    /** When this document was last updated */
+    updated?: string;
+    /** When this document was created */
+    created?: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  };
+};
+export type PostParkingLotItemsRes = /** status 201 Successful create */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PostParkingLotItemsArgs = {
+  /** The document id (String so it can be synced) */
+  _id?: string;
+  /** The user who owns this parking lot item */
+  ownerId?: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId?: string;
+  /** Whether the item is still open or was resolved during review */
+  status?: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text?: string;
+  /** When this document was last updated */
+  updated?: string;
+  /** When this document was created */
+  created?: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetParkingLotItemsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so it can be synced) */
+    _id: string;
+    /** The user who owns this parking lot item */
+    ownerId: string;
+    /** When the item was resolved; unset while open */
+    resolvedAt?: string;
+    /** The focus session where the item was captured */
+    sessionId: string;
+    /** Whether the item is still open or was resolved during review */
+    status: "open" | "done" | "dismissed";
+    /** The stray thought captured during focus */
+    text: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetParkingLotItemsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  sessionId?:
+    | string
+    | {
+        $in?: string[];
+      };
+  status?:
+    | ("open" | "done" | "dismissed")
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetParkingLotItemsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetParkingLotItemsByIdArgs = string;
+export type PatchParkingLotItemsByIdRes = /** status 200 Successful update */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PatchParkingLotItemsByIdArgs = {
+  id: string;
+  body: {
+    /** The document id (String so it can be synced) */
+    _id?: string;
+    /** The user who owns this parking lot item */
+    ownerId?: string;
+    /** When the item was resolved; unset while open */
+    resolvedAt?: string;
+    /** The focus session where the item was captured */
+    sessionId?: string;
+    /** Whether the item is still open or was resolved during review */
+    status?: "open" | "done" | "dismissed";
+    /** The stray thought captured during focus */
+    text?: string;
     /** When this document was last updated */
     updated?: string;
     /** When this document was created */
@@ -869,6 +1451,12 @@ export type PostAdminUsersRes = /** status 201 Successful create */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -888,6 +1476,12 @@ export type PostAdminUsersArgs = {
   email?: string;
   /** The user's display name */
   name?: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id?: string;
   hash?: string;
   salt?: string;
@@ -908,6 +1502,12 @@ export type GetAdminUsersRes = /** status 200 Successful list */ {
     email: string;
     /** The user's display name */
     name: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id: string;
     hash?: string;
     salt?: string;
@@ -972,6 +1572,12 @@ export type GetAdminUsersByIdRes = /** status 200 Successful read */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -992,6 +1598,12 @@ export type PatchAdminUsersByIdRes = /** status 200 Successful update */ {
   email: string;
   /** The user's display name */
   name: string;
+  /** When the user's starter blocklists were first seeded */
+  starterBlocklistsSeededAt?: string;
+  /** IANA timezone used for profile-local week boundaries */
+  timezone?: string;
+  /** Day that starts the user's focus week, Sunday = 0 */
+  weekStartDay?: number;
   _id: string;
   hash?: string;
   salt?: string;
@@ -1013,6 +1625,12 @@ export type PatchAdminUsersByIdArgs = {
     email?: string;
     /** The user's display name */
     name?: string;
+    /** When the user's starter blocklists were first seeded */
+    starterBlocklistsSeededAt?: string;
+    /** IANA timezone used for profile-local week boundaries */
+    timezone?: string;
+    /** Day that starts the user's focus week, Sunday = 0 */
+    weekStartDay?: number;
     _id?: string;
     hash?: string;
     salt?: string;
@@ -1125,12 +1743,24 @@ export const {
   useGetUsersByIdQuery,
   usePatchUsersByIdMutation,
   useDeleteUsersByIdMutation,
+  useBlocklistsStarterMutation,
+  usePostBlocklistsMutation,
+  useGetBlocklistsQuery,
+  useGetBlocklistsByIdQuery,
+  usePatchBlocklistsByIdMutation,
+  useDeleteBlocklistsByIdMutation,
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
+  useFocussessionsReviewMutation,
+  useFocussessionsSkipReviewMutation,
   usePostFocusSessionsMutation,
   useGetFocusSessionsQuery,
   useGetFocusSessionsByIdQuery,
   usePatchFocusSessionsByIdMutation,
+  usePostParkingLotItemsMutation,
+  useGetParkingLotItemsQuery,
+  useGetParkingLotItemsByIdQuery,
+  usePatchParkingLotItemsByIdMutation,
   useUnlockgrantsPublicKeyQuery,
   useGetUnlockGrantsQuery,
   useGetUnlockGrantsByIdQuery,

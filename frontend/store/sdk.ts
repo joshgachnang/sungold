@@ -7,15 +7,20 @@ import {addTagTypes, openapi} from "./openApiSdk";
 /** emptyApi unwraps the `data` envelope — profile fields are top-level on the response. */
 export interface ProfileResponse {
   _id: string;
+  admin?: boolean;
   id: string;
   email: string;
   name: string;
+  timezone?: string;
+  weekStartDay?: number;
 }
 
 export interface UpdateProfileRequest {
   name?: string;
   email?: string;
   password?: string;
+  timezone?: string;
+  weekStartDay?: number;
 }
 
 export const terrenoApi = openapi

@@ -3,6 +3,12 @@ import type mongoose from "mongoose";
 
 export type FocusSessionStatus = "active" | "ended";
 
+export interface FocusSessionReview {
+  done: string;
+  note: string;
+  reviewedAt: Date;
+}
+
 interface FocusSessionStatics
   extends FindExactlyOnePlugin<FocusSessionDocument>,
     FindOneOrNonePlugin<FocusSessionDocument> {}
@@ -17,7 +23,10 @@ export interface FocusSessionDocument extends mongoose.Document<string> {
   ownerId: mongoose.Types.ObjectId;
   status: FocusSessionStatus;
   blockedDomains: string[];
+  blocklistIds: string[];
   intention?: string;
+  review?: FocusSessionReview;
+  reviewSkippedAt?: Date;
   startedAt: Date;
   endsAt?: Date;
   endedAt?: Date;

@@ -3,7 +3,10 @@ import {API_URL, TEST_USER, type TestUser, WEB_ORIGIN} from "../fixtures/testUse
 
 // Ends every active focus session for the user through the API, so each test starts from
 // "no active session" regardless of what a previous test or run left behind.
-const authorizationFor = async (request: APIRequestContext, user: TestUser): Promise<string> => {
+export const authorizationFor = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<string> => {
   const signIn = await request.post(`${API_URL}/api/auth/sign-in/email`, {
     data: {email: user.email, password: user.password},
     headers: {origin: WEB_ORIGIN},
@@ -12,17 +15,121 @@ const authorizationFor = async (request: APIRequestContext, user: TestUser): Pro
   return `Bearer ${signIn.headers()["set-auth-token"]}`;
 };
 
+export const createBlocklistViaApi = async (
+  request: APIRequestContext,
+  data: {domains: string[]; name: string},
+  user: TestUser = TEST_USER
+): Promise<{_id: string; domains: string[]; name: string}> => {
+  const created = await request.post(`${API_URL}/blocklists`, {
+    data,
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {data: {_id: string; domains: string[]; name: string}};
+  return body.data;
+};
+
+export const seedStarterBlocklistsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; domains: string[]; name: string; source: "starter" | "user"}[]> => {
+  const seeded = await request.post(`${API_URL}/blocklists/starter`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(seeded.ok(), await seeded.text()).toBe(true);
+  const body = (await seeded.json()) as {
+    data: {_id: string; domains: string[]; name: string; source: "starter" | "user"}[];
+  };
+  return body.data;
+};
+
+export const deleteBlocklistViaApi = async (
+  request: APIRequestContext,
+  id: string,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const deleted = await request.delete(`${API_URL}/blocklists/${id}`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(deleted.ok(), await deleted.text()).toBe(true);
+};
+
+export const deleteUserBlocklistsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const authorization = await authorizationFor(request, user);
+  const list = await request.get(`${API_URL}/blocklists`, {headers: {authorization}});
+  expect(list.ok(), await list.text()).toBe(true);
+  const body = (await list.json()) as {data?: {_id: string; source: "starter" | "user"}[]};
+  for (const blocklist of body.data ?? []) {
+    if (blocklist.source !== "user") {
+      continue;
+    }
+    const deleted = await request.delete(`${API_URL}/blocklists/${blocklist._id}`, {
+      headers: {authorization},
+    });
+    expect(deleted.ok(), await deleted.text()).toBe(true);
+  }
+};
+
+export const getActiveSessionsViaApi = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; blockedDomains: string[]; blocklistIds?: string[]}[]> => {
+  const list = await request.get(`${API_URL}/focusSessions?status=active`, {
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(list.ok(), await list.text()).toBe(true);
+  const body = (await list.json()) as {
+    data: {_id: string; blockedDomains: string[]; blocklistIds?: string[]}[];
+  };
+  return body.data;
+};
+
 // Starts a session through the API, as another device would.
 export const startSessionViaApi = async (
   request: APIRequestContext,
   blockedDomains: string[],
-  user: TestUser = TEST_USER
-): Promise<void> => {
+  user: TestUser = TEST_USER,
+  intention?: string
+): Promise<{_id: string; blockedDomains: string[]; intention?: string; startedAt: string}> => {
   const created = await request.post(`${API_URL}/focusSessions`, {
-    data: {blockedDomains},
+    data: {blockedDomains, ...(intention ? {intention} : {})},
     headers: {authorization: await authorizationFor(request, user)},
   });
   expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {
+    data: {_id: string; blockedDomains: string[]; intention?: string; startedAt: string};
+  };
+  return body.data;
+};
+
+export const requestGrantViaApi = async (
+  request: APIRequestContext,
+  sessionId: string,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const granted = await request.post(`${API_URL}/focusSessions/${sessionId}/grants`, {
+    data: {minutes: 5, reason: "peek"},
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(granted.ok(), await granted.text()).toBe(true);
+};
+
+export const createParkingLotItemViaApi = async (
+  request: APIRequestContext,
+  sessionId: string,
+  text: string,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; text: string}> => {
+  const created = await request.post(`${API_URL}/parkingLotItems`, {
+    data: {sessionId, text},
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {data: {_id: string; text: string}};
+  return body.data;
 };
 
 export const endActiveSessions = async (
