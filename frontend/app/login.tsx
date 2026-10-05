@@ -1,13 +1,20 @@
 import {baseUrl} from "@terreno/rtk";
 import {LoginScreen} from "@terreno/ui";
-import {useRouter} from "expo-router";
+import {useLocalSearchParams, useRouter} from "expo-router";
 import type React from "react";
 import {useCallback, useState} from "react";
 import {betterAuthClient} from "@/lib/betterAuth";
 import {syncBetterAuthSession, useAppDispatch} from "@/store/index";
 
+// Only same-app device sign-in pages may be returned to after login.
+const safeNext = (next: string | string[] | undefined): string | undefined => {
+  const value = Array.isArray(next) ? next[0] : next;
+  return value?.startsWith("/device-login?") ? value : undefined;
+};
+
 const Login: React.FC = () => {
   const router = useRouter();
+  const {next} = useLocalSearchParams<{next?: string}>();
   const dispatch = useAppDispatch();
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,7 +31,7 @@ const Login: React.FC = () => {
           return;
         }
         await syncBetterAuthSession(dispatch);
-        router.replace("/(tabs)");
+        router.replace((safeNext(next) ?? "/(tabs)") as never);
       } catch (error: unknown) {
         console.error("[login] Sign in threw", {baseUrl, error});
         setErrorMessage("Sign in failed. Please try again.");
@@ -32,7 +39,7 @@ const Login: React.FC = () => {
         setIsSubmitting(false);
       }
     },
-    [dispatch, router]
+    [dispatch, next, router]
   );
 
   return (

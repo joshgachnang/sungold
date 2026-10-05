@@ -1,6 +1,14 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: types are generated from backend OpenAPI schemas
 import {emptySplitApi as api} from "./betterAuthApi";
-export const addTagTypes = ["users", "admin", "adminMigrations", "organizations"] as const;
+export const addTagTypes = [
+  "users",
+  "focussessions",
+  "unlockgrants",
+  "devicesessions",
+  "admin",
+  "adminMigrations",
+  "organizations",
+] as const;
 const injectedRtkApi = api
   .enhanceEndpoints({
     addTagTypes,
@@ -46,6 +54,36 @@ const injectedRtkApi = api
         invalidatesTags: ["users"],
         query: (queryArg) => ({method: "DELETE", url: `/users/${queryArg}`}),
       }),
+      devicesessionsIssue: build.mutation<DevicesessionsIssueRes, DevicesessionsIssueArgs>({
+        invalidatesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/deviceSessions/issue`,
+        }),
+      }),
+      devicesessionsRevoke: build.mutation<DevicesessionsRevokeRes, DevicesessionsRevokeArgs>({
+        invalidatesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          method: "POST",
+          url: `/deviceSessions/${queryArg}/revoke`,
+        }),
+      }),
+      focussessionsEnd: build.mutation<FocussessionsEndRes, FocussessionsEndArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          method: "POST",
+          url: `/focusSessions/${queryArg}/end`,
+        }),
+      }),
+      focussessionsGrants: build.mutation<FocussessionsGrantsRes, FocussessionsGrantsArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "POST",
+          url: `/focusSessions/${queryArg.id}/grants`,
+        }),
+      }),
       getAdminConfig: build.query<GetAdminConfigRes, GetAdminConfigArgs>({
         providesTags: ["admin"],
         query: () => ({url: `/admin/config`}),
@@ -71,6 +109,39 @@ const injectedRtkApi = api
         providesTags: ["users"],
         query: (queryArg) => ({url: `/admin/users/${queryArg}`}),
       }),
+      getDeviceSessions: build.query<GetDeviceSessionsRes, GetDeviceSessionsArgs>({
+        providesTags: ["devicesessions"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sort: queryArg.sort,
+          },
+          url: `/deviceSessions/`,
+        }),
+      }),
+      getDeviceSessionsById: build.query<GetDeviceSessionsByIdRes, GetDeviceSessionsByIdArgs>({
+        providesTags: ["devicesessions"],
+        query: (queryArg) => ({url: `/deviceSessions/${queryArg}`}),
+      }),
+      getFocusSessions: build.query<GetFocusSessionsRes, GetFocusSessionsArgs>({
+        providesTags: ["focussessions"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sort: queryArg.sort,
+            status: queryArg.status,
+          },
+          url: `/focusSessions/`,
+        }),
+      }),
+      getFocusSessionsById: build.query<GetFocusSessionsByIdRes, GetFocusSessionsByIdArgs>({
+        providesTags: ["focussessions"],
+        query: (queryArg) => ({url: `/focusSessions/${queryArg}`}),
+      }),
       getOrgs: build.query<GetOrgsRes, GetOrgsArgs>({
         providesTags: ["organizations"],
         query: () => ({url: `/orgs/`}),
@@ -86,6 +157,23 @@ const injectedRtkApi = api
       getOrgsMine: build.query<GetOrgsMineRes, GetOrgsMineArgs>({
         providesTags: ["organizations"],
         query: () => ({url: `/orgs/mine`}),
+      }),
+      getUnlockGrants: build.query<GetUnlockGrantsRes, GetUnlockGrantsArgs>({
+        providesTags: ["unlockgrants"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sessionId: queryArg.sessionId,
+            sort: queryArg.sort,
+          },
+          url: `/unlockGrants/`,
+        }),
+      }),
+      getUnlockGrantsById: build.query<GetUnlockGrantsByIdRes, GetUnlockGrantsByIdArgs>({
+        providesTags: ["unlockgrants"],
+        query: (queryArg) => ({url: `/unlockGrants/${queryArg}`}),
       }),
       getUsers: build.query<GetUsersRes, GetUsersArgs>({
         providesTags: ["users"],
@@ -113,6 +201,16 @@ const injectedRtkApi = api
           url: `/admin/users/${queryArg.id}`,
         }),
       }),
+      patchFocusSessionsById: build.mutation<PatchFocusSessionsByIdRes, PatchFocusSessionsByIdArgs>(
+        {
+          invalidatesTags: ["focussessions"],
+          query: (queryArg) => ({
+            body: queryArg.body,
+            method: "PATCH",
+            url: `/focusSessions/${queryArg.id}`,
+          }),
+        }
+      ),
       patchOrgsById: build.mutation<PatchOrgsByIdRes, PatchOrgsByIdArgs>({
         invalidatesTags: ["organizations"],
         query: (queryArg) => ({
@@ -170,6 +268,14 @@ const injectedRtkApi = api
           url: `/admin/users/bulk-patch`,
         }),
       }),
+      postFocusSessions: build.mutation<PostFocusSessionsRes, PostFocusSessionsArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/focusSessions/`,
+        }),
+      }),
       postOrgs: build.mutation<PostOrgsRes, PostOrgsArgs>({
         invalidatesTags: ["organizations"],
         query: (queryArg) => ({
@@ -193,6 +299,10 @@ const injectedRtkApi = api
           method: "POST",
           url: `/users/`,
         }),
+      }),
+      unlockgrantsPublicKey: build.query<UnlockgrantsPublicKeyRes, UnlockgrantsPublicKeyArgs>({
+        providesTags: ["unlockgrants"],
+        query: () => ({url: `/unlockGrants/publicKey`}),
       }),
     }),
     overrideExisting: false,
@@ -343,6 +453,357 @@ export type PatchUsersByIdArgs = {
 };
 export type DeleteUsersByIdRes = unknown;
 export type DeleteUsersByIdArgs = string;
+export type FocussessionsEndRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsEndArgs = string;
+export type FocussessionsGrantsRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsGrantsArgs = {
+  id: string;
+  body: {
+    minutes: number;
+    reason?: "peek";
+  };
+};
+export type PostFocusSessionsRes = /** status 201 Successful create */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+  blockedDomains?: string[];
+  /** When the session was ended; unset while active */
+  endedAt?: string;
+  /** Optional planned end time for the session */
+  endsAt?: string;
+  /** What the user said they would work on, shown on block screens */
+  intention?: string;
+  /** The user who owns this session */
+  ownerId: string;
+  /** When the session started */
+  startedAt: string;
+  /** Whether the session is currently blocking (active) or finished (ended) */
+  status: "active" | "ended";
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PostFocusSessionsArgs = {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id?: string;
+  /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+  blockedDomains?: string[];
+  /** When the session was ended; unset while active */
+  endedAt?: string;
+  /** Optional planned end time for the session */
+  endsAt?: string;
+  /** What the user said they would work on, shown on block screens */
+  intention?: string;
+  /** The user who owns this session */
+  ownerId?: string;
+  /** When the session started */
+  startedAt?: string;
+  /** Whether the session is currently blocking (active) or finished (ended) */
+  status?: "active" | "ended";
+  /** When this document was last updated */
+  updated?: string;
+  /** When this document was created */
+  created?: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetFocusSessionsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id: string;
+    /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+    blockedDomains?: string[];
+    /** When the session was ended; unset while active */
+    endedAt?: string;
+    /** Optional planned end time for the session */
+    endsAt?: string;
+    /** What the user said they would work on, shown on block screens */
+    intention?: string;
+    /** The user who owns this session */
+    ownerId: string;
+    /** When the session started */
+    startedAt: string;
+    /** Whether the session is currently blocking (active) or finished (ended) */
+    status: "active" | "ended";
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetFocusSessionsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  status?:
+    | ("active" | "ended")
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetFocusSessionsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+  blockedDomains?: string[];
+  /** When the session was ended; unset while active */
+  endedAt?: string;
+  /** Optional planned end time for the session */
+  endsAt?: string;
+  /** What the user said they would work on, shown on block screens */
+  intention?: string;
+  /** The user who owns this session */
+  ownerId: string;
+  /** When the session started */
+  startedAt: string;
+  /** Whether the session is currently blocking (active) or finished (ended) */
+  status: "active" | "ended";
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetFocusSessionsByIdArgs = string;
+export type PatchFocusSessionsByIdRes = /** status 200 Successful update */ {
+  /** The document id (String so offline sync clients can mint ids) */
+  _id: string;
+  /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+  blockedDomains?: string[];
+  /** When the session was ended; unset while active */
+  endedAt?: string;
+  /** Optional planned end time for the session */
+  endsAt?: string;
+  /** What the user said they would work on, shown on block screens */
+  intention?: string;
+  /** The user who owns this session */
+  ownerId: string;
+  /** When the session started */
+  startedAt: string;
+  /** Whether the session is currently blocking (active) or finished (ended) */
+  status: "active" | "ended";
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PatchFocusSessionsByIdArgs = {
+  id: string;
+  body: {
+    /** The document id (String so offline sync clients can mint ids) */
+    _id?: string;
+    /** Normalized hostnames blocked while the session is active, e.g. youtube.com */
+    blockedDomains?: string[];
+    /** When the session was ended; unset while active */
+    endedAt?: string;
+    /** Optional planned end time for the session */
+    endsAt?: string;
+    /** What the user said they would work on, shown on block screens */
+    intention?: string;
+    /** The user who owns this session */
+    ownerId?: string;
+    /** When the session started */
+    startedAt?: string;
+    /** Whether the session is currently blocking (active) or finished (ended) */
+    status?: "active" | "ended";
+    /** When this document was last updated */
+    updated?: string;
+    /** When this document was created */
+    created?: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  };
+};
+export type UnlockgrantsPublicKeyRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type UnlockgrantsPublicKeyArgs = undefined;
+export type GetUnlockGrantsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so it can be synced) */
+    _id: string;
+    /** When the grant stops lifting the block; clients relock at this time */
+    expiresAt: string;
+    /** When the server issued and signed the grant */
+    issuedAt: string;
+    /** The user the grant was issued to */
+    ownerId: string;
+    /** Signed grant payload: base64url of the canonical JSON (contract version v) */
+    payload: string;
+    /** Why the grant was issued (peek = timed unlock) */
+    reason: "peek";
+    /** The focus session whose block this grant lifts */
+    sessionId: string;
+    /** Ed25519 signature over the payload bytes, base64url */
+    signature: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetUnlockGrantsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  sessionId?:
+    | string
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetUnlockGrantsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** When the grant stops lifting the block; clients relock at this time */
+  expiresAt: string;
+  /** When the server issued and signed the grant */
+  issuedAt: string;
+  /** The user the grant was issued to */
+  ownerId: string;
+  /** Signed grant payload: base64url of the canonical JSON (contract version v) */
+  payload: string;
+  /** Why the grant was issued (peek = timed unlock) */
+  reason: "peek";
+  /** The focus session whose block this grant lifts */
+  sessionId: string;
+  /** Ed25519 signature over the payload bytes, base64url */
+  signature: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetUnlockGrantsByIdArgs = string;
+export type DevicesessionsRevokeRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type DevicesessionsRevokeArgs = string;
+export type DevicesessionsIssueRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type DevicesessionsIssueArgs = {
+  client: "mac";
+  name?: string;
+  redirect: string;
+  state: string;
+};
+export type GetDeviceSessionsRes = /** status 200 Successful list */ {
+  data?: {
+    /** Id of the Better Auth session issued to the device (not the token) */
+    betterAuthSessionId: string;
+    /** Which native client this is */
+    client: "mac";
+    /** Display name the device reported, e.g. the Mac's computer name */
+    name?: string;
+    /** The user the device is signed in as */
+    ownerId: string;
+    /** When the owner revoked the device; its token stops working immediately */
+    revokedAt?: string;
+    _id: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetDeviceSessionsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetDeviceSessionsByIdRes = /** status 200 Successful read */ {
+  /** Id of the Better Auth session issued to the device (not the token) */
+  betterAuthSessionId: string;
+  /** Which native client this is */
+  client: "mac";
+  /** Display name the device reported, e.g. the Mac's computer name */
+  name?: string;
+  /** The user the device is signed in as */
+  ownerId: string;
+  /** When the owner revoked the device; its token stops working immediately */
+  revokedAt?: string;
+  _id: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+};
+export type GetDeviceSessionsByIdArgs = string;
 export type GetAdminConfigRes = /** status 200 Success */ {
   capabilities?: {
     actions?: boolean;
@@ -664,6 +1125,19 @@ export const {
   useGetUsersByIdQuery,
   usePatchUsersByIdMutation,
   useDeleteUsersByIdMutation,
+  useFocussessionsEndMutation,
+  useFocussessionsGrantsMutation,
+  usePostFocusSessionsMutation,
+  useGetFocusSessionsQuery,
+  useGetFocusSessionsByIdQuery,
+  usePatchFocusSessionsByIdMutation,
+  useUnlockgrantsPublicKeyQuery,
+  useGetUnlockGrantsQuery,
+  useGetUnlockGrantsByIdQuery,
+  useDevicesessionsRevokeMutation,
+  useDevicesessionsIssueMutation,
+  useGetDeviceSessionsQuery,
+  useGetDeviceSessionsByIdQuery,
   useGetAdminConfigQuery,
   usePostAdminBackgroundTasksMutation,
   usePostAdminUsersBulkPatchMutation,

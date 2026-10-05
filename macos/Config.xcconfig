@@ -1,0 +1,16 @@
+// Local build settings for the Sungold Mac app.
+// The network filter system extension needs a real team: ZKQE23T646 is the interim
+// development team until the Gachnang LLC organization team exists (decision 0010).
+// To build without a team, set DEVELOPMENT_TEAM empty and SUNGOLD_CODE_SIGN_IDENTITY to "-"
+// (the filter will not install). Debug builds keep the device token in a user-only file,
+// not the Keychain; see docs/how-to/run-the-mac-app.md.
+DEVELOPMENT_TEAM = ZKQE23T646
+SUNGOLD_CODE_SIGN_IDENTITY = Apple Development
+SUNGOLD_BUNDLE_PREFIX = app.sungold
+SUNGOLD_API_URL = http:/$()/localhost:4093
+SUNGOLD_WEB_URL = http:/$()/localhost:8093
+// Ed25519 public key (raw, base64url) that verifies unlock grants; pinned in the app and the
+// filter. This is the local development backend's key (GET /unlockGrants/publicKey).
+SUNGOLD_GRANT_PUBLIC_KEY = emqBCX0oqMjXdS2Wu8LRLR3eekEwP6_JbE62WLNg-qg
+// Filter extension build number; bump it whenever SungoldFilter changes (see project.yml).
+SUNGOLD_FILTER_BUILD = 4

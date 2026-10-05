@@ -1,0 +1,99 @@
+name: Sungold
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+options:
+  bundleIdPrefix: app.sungold
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: $(SUNGOLD_CODE_SIGN_IDENTITY)
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Sungold:
+    type: application
+    platform: macOS
+    sources: [Sungold, Shared]
+    info:
+      path: Sungold/Info.plist
+      properties:
+        CFBundleDisplayName: Sungold
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        SungoldAPIURL: $(SUNGOLD_API_URL)
+        SungoldWebURL: $(SUNGOLD_WEB_URL)
+        SungoldGrantPublicKey: $(SUNGOLD_GRANT_PUBLIC_KEY)
+        CFBundleURLTypes:
+          - CFBundleURLName: $(SUNGOLD_BUNDLE_PREFIX).mac.auth
+            CFBundleURLSchemes: [sungold-mac]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    attributes:
+      SystemCapabilities:
+        com.apple.NetworkExtensions:
+          enabled: 1
+        com.apple.SystemExtensions:
+          enabled: 1
+    dependencies:
+      - target: SungoldFilter
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac
+        PRODUCT_NAME: Sungold
+        CODE_SIGN_ENTITLEMENTS: Sungold/Sungold.entitlements
+  SungoldFilter:
+    type: system-extension
+    platform: macOS
+    attributes:
+      SystemCapabilities:
+        com.apple.NetworkExtensions:
+          enabled: 1
+    sources: [SungoldFilter, Shared]
+    info:
+      path: SungoldFilter/Info.plist
+      properties:
+        CFBundleDisplayName: Sungold Filter
+        # macOS only replaces an installed system extension when this changes: bump
+        # SUNGOLD_FILTER_BUILD in Config.xcconfig with every filter change.
+        CFBundleVersion: $(SUNGOLD_FILTER_BUILD)
+        # sysextd rejects a system extension whose package type is not SYSX.
+        CFBundlePackageType: SYSX
+        NSSystemExtensionUsageDescription: Sungold blocks the websites you choose during focus sessions.
+        SungoldGrantPublicKey: $(SUNGOLD_GRANT_PUBLIC_KEY)
+        NetworkExtension:
+          # Must start with one of the extension's App Groups ($(TeamIdentifierPrefix)app.sungold.mac).
+          NEMachServiceName: $(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)
+          NEProviderClasses:
+            com.apple.networkextension.filter-data: $(PRODUCT_MODULE_NAME).FilterDataProvider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac.filter
+        PRODUCT_NAME: $(SUNGOLD_BUNDLE_PREFIX).mac.filter
+        CODE_SIGN_ENTITLEMENTS: SungoldFilter/SungoldFilter.entitlements
+        SKIP_INSTALL: YES
+  SungoldTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [SungoldTests]
+    dependencies:
+      - target: Sungold
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SUNGOLD_BUNDLE_PREFIX).mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Sungold.app/Contents/MacOS/Sungold
+schemes:
+  Sungold:
+    build:
+      targets:
+        Sungold: all
+        SungoldTests: [test]
+    test:
+      targets: [SungoldTests]

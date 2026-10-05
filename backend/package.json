@@ -10,9 +10,15 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.6",
+    "@terreno/test": "^57.6.1",
     "@types/bun": "^1.4.0",
+    "@types/chai": "^5.2.3",
     "@types/express": "^4.17.21",
     "@types/luxon": "^3.7.1",
+    "@types/supertest": "^7.2.1",
+    "chai": "^6.2.2",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.0",
     "typescript": "~6.0.3"
   },
   "name": "@sungold/backend",
@@ -24,8 +30,9 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir ./dist --target node",
     "compile": "tsc",
-    "dev": "PORT=4000 bun run --watch src/index.ts",
+    "dev": "PORT=4093 bun run --watch src/index.ts",
     "format": "biome format --write .",
+    "grant-key": "bun run src/scripts/generateGrantKey.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:unsafefix": "biome check --write . --unsafe",

@@ -1,0 +1,63 @@
+import {type APIRequestContext, expect} from "@playwright/test";
+import {API_URL, TEST_USER, type TestUser, WEB_ORIGIN} from "../fixtures/testUsers";
+
+// Ends every active focus session for the user through the API, so each test starts from
+// "no active session" regardless of what a previous test or run left behind.
+const authorizationFor = async (request: APIRequestContext, user: TestUser): Promise<string> => {
+  const signIn = await request.post(`${API_URL}/api/auth/sign-in/email`, {
+    data: {email: user.email, password: user.password},
+    headers: {origin: WEB_ORIGIN},
+  });
+  expect(signIn.ok(), await signIn.text()).toBe(true);
+  return `Bearer ${signIn.headers()["set-auth-token"]}`;
+};
+
+// Starts a session through the API, as another device would.
+export const startSessionViaApi = async (
+  request: APIRequestContext,
+  blockedDomains: string[],
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const created = await request.post(`${API_URL}/focusSessions`, {
+    data: {blockedDomains},
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(created.status(), await created.text()).toBe(201);
+};
+
+export const endActiveSessions = async (
+  request: APIRequestContext,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const authorization = await authorizationFor(request, user);
+  const list = await request.get(`${API_URL}/focusSessions?status=active`, {
+    headers: {authorization},
+  });
+  expect(list.ok(), await list.text()).toBe(true);
+  const {data} = (await list.json()) as {data: {_id: string}[]};
+  for (const session of data) {
+    const ended = await request.post(`${API_URL}/focusSessions/${session._id}/end`, {
+      headers: {authorization},
+    });
+    expect(ended.ok(), await ended.text()).toBe(true);
+  }
+};
+
+// Revokes the device sessions a test created (matched by the device name it signed in with),
+// so e2e runs leave no live tokens behind without touching real devices on the same account.
+export const revokeDeviceSessions = async (
+  request: APIRequestContext,
+  deviceName: string,
+  user: TestUser = TEST_USER
+): Promise<void> => {
+  const authorization = await authorizationFor(request, user);
+  const list = await request.get(`${API_URL}/deviceSessions`, {headers: {authorization}});
+  expect(list.ok(), await list.text()).toBe(true);
+  const {data} = (await list.json()) as {data: {_id: string; name?: string; revokedAt?: string}[]};
+  for (const device of data.filter((item) => !item.revokedAt && item.name === deviceName)) {
+    const revoked = await request.post(`${API_URL}/deviceSessions/${device._id}/revoke`, {
+      headers: {authorization},
+    });
+    expect(revoked.ok(), await revoked.text()).toBe(true);
+  }
+};

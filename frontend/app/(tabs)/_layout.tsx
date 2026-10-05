@@ -29,6 +29,13 @@ const TabLayout: React.FC = () => {
         }}
       />
       <Tabs.Screen
+        name="focus"
+        options={{
+          tabBarIcon: ({color}) => <TabBarIcon color={color} name="bullseye" />,
+          title: "Focus",
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           headerShown: false,
