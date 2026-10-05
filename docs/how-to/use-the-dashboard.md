@@ -4,7 +4,7 @@ Open the web app after signing in to use the dashboard screens.
 
 | Area | What it does |
 | --- | --- |
-| Today | Shows the day view. The active-session summary and weekly focus comparison arrive in later dashboard slices. |
+| Today | Starts or resumes the current focus session, shows the weekly focus comparison, and prompts for any pending review. |
 | Focus | Starts and manages a focus session from saved blocklists and one-off domains, with a parking lot for stray thoughts and the end-of-block review prompt. |
 | History | Shows weekly focus-hour bars, pending reviews and a table of past focus sessions. |
 | Blocklists | Creates, edits and deletes saved sets of distracting domains. |
@@ -12,6 +12,15 @@ Open the web app after signing in to use the dashboard screens.
 | Profile | Manages account settings, including the week start day and timezone used by dashboard charts. |
 
 Wide browser windows use the left sidebar. Phones and narrow browser windows use bottom tabs with the same destinations.
+
+## Use Today
+
+1. Open **Today**.
+2. Start a focus session from saved blocklists and any extra domains, or resume the active session shown on the page.
+3. Check this week's focus hours against last week.
+4. When **Review your last session** appears, open it to save or skip the review.
+
+Today uses the same session controls as Focus. The weekly totals use the saved week start day and timezone from Profile, so they match History.
 
 ## Manage Blocklists
 

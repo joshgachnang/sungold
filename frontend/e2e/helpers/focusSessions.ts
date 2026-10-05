@@ -93,14 +93,14 @@ export const startSessionViaApi = async (
   blockedDomains: string[],
   user: TestUser = TEST_USER,
   intention?: string
-): Promise<{_id: string; blockedDomains: string[]; intention?: string}> => {
+): Promise<{_id: string; blockedDomains: string[]; intention?: string; startedAt: string}> => {
   const created = await request.post(`${API_URL}/focusSessions`, {
     data: {blockedDomains, ...(intention ? {intention} : {})},
     headers: {authorization: await authorizationFor(request, user)},
   });
   expect(created.status(), await created.text()).toBe(201);
   const body = (await created.json()) as {
-    data: {_id: string; blockedDomains: string[]; intention?: string};
+    data: {_id: string; blockedDomains: string[]; intention?: string; startedAt: string};
   };
   return body.data;
 };

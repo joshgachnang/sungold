@@ -99,7 +99,7 @@ Dashboard week-boundary calculations read the signed-in user's saved `weekStartD
 
 The web dashboard computes focus hours on the client from synced `FocusSession` and `UnlockGrant` records (`frontend/utils/focusHours.ts`). Each session contributes the time from `startedAt` to `endedAt`, or to the current time while it is active. Unlock grants subtract only the portions that overlap that session, clipped again to each displayed week; overlapping grants are merged so the same minute is not subtracted twice.
 
-Weekly buckets use the signed-in user's saved `weekStartDay` and `timezone`. History shows the current week plus the previous seven weeks from those boundaries, so two devices render the same weekly totals after profile defaults have been saved.
+Weekly buckets use the signed-in user's saved `weekStartDay` and `timezone`. History shows the current week plus the previous seven weeks from those boundaries, and Today shows the current week compared with the previous week from the same utility, so two devices render the same weekly totals after profile defaults have been saved.
 
 ### `ParkingLotItem`
 
