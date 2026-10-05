@@ -1,10 +1,20 @@
-import {APIError, modelRouter, OwnerQueryFilter, Permissions, z} from "@terreno/api";
+import {
+  APIError,
+  asyncHandler,
+  authenticateMiddleware,
+  modelRouter,
+  OwnerQueryFilter,
+  Permissions,
+  z,
+} from "@terreno/api";
 import mongoose from "mongoose";
 import {Blocklist} from "../models/blocklist";
 import {FocusSession} from "../models/focusSession";
+import {ParkingLotItem} from "../models/parkingLotItem";
 import {UnlockGrant} from "../models/unlockGrant";
 import type {BlocklistDocument} from "../types/models/blocklistTypes";
 import type {FocusSessionDocument} from "../types/models/focusSessionTypes";
+import type {ParkingLotItemDocument} from "../types/models/parkingLotItemTypes";
 import type {UserDocument} from "../types/models/userTypes";
 import {normalizeDomains} from "../utils/domains";
 import {signGrant} from "../utils/grantSigning";
@@ -18,6 +28,93 @@ const grantBodySchema = z
     reason: z.enum(["peek"]).optional(),
   })
   .strict();
+
+const reviewItemSchema = z
+  .object({
+    id: z.string().min(1),
+    status: z.enum(["open", "done", "dismissed"]),
+  })
+  .strict();
+
+const reviewBodySchema = z
+  .object({
+    done: z.string().max(280).default(""),
+    items: z.array(reviewItemSchema).default([]),
+    note: z.string().max(280).default(""),
+  })
+  .strict();
+
+type ReviewBody = z.infer<typeof reviewBodySchema>;
+
+const ensureReviewable = (session: FocusSessionDocument): void => {
+  if (session.status !== "ended") {
+    throw new APIError({status: 409, title: "Session has not ended"});
+  }
+  if (session.review?.reviewedAt || session.reviewSkippedAt) {
+    throw new APIError({status: 409, title: "Session review is already complete"});
+  }
+};
+
+const applyReviewItems = async (
+  session: FocusSessionDocument,
+  items: ReviewBody["items"]
+): Promise<void> => {
+  if (items.length === 0) {
+    return;
+  }
+  const uniqueIds = Array.from(new Set(items.map((item) => item.id)));
+  if (uniqueIds.length !== items.length) {
+    throw new APIError({
+      fields: {items: "Each parking lot item can be reviewed once"},
+      status: 400,
+      title: "Invalid review items",
+    });
+  }
+  const existingItems = await ParkingLotItem.find({
+    _id: {$in: uniqueIds},
+    deleted: false,
+    ownerId: session.ownerId,
+  }).exec();
+  if (existingItems.length !== uniqueIds.length) {
+    throw new APIError({
+      fields: {items: "Choose parking lot items from your account"},
+      status: 400,
+      title: "Invalid review items",
+    });
+  }
+  const byId = new Map(existingItems.map((item) => [item._id, item]));
+  const now = new Date();
+  await Promise.all(
+    items.map(async (reviewItem) => {
+      const item = byId.get(reviewItem.id) as ParkingLotItemDocument;
+      item.status = reviewItem.status;
+      item.resolvedAt = reviewItem.status === "open" ? undefined : now;
+      await item.save();
+    })
+  );
+};
+
+const submitReview = async (
+  session: FocusSessionDocument,
+  body: ReviewBody
+): Promise<FocusSessionDocument> => {
+  ensureReviewable(session);
+  await applyReviewItems(session, body.items);
+  session.review = {
+    done: body.done.trim(),
+    note: body.note.trim(),
+    reviewedAt: new Date(),
+  };
+  await session.save();
+  return session;
+};
+
+const skipReview = async (session: FocusSessionDocument): Promise<FocusSessionDocument> => {
+  ensureReviewable(session);
+  session.reviewSkippedAt = new Date();
+  await session.save();
+  return session;
+};
 
 const cleanDomains = (value: unknown): string[] => {
   if (!Array.isArray(value) || value.length === 0) {
@@ -111,6 +208,25 @@ const cleanStartDomains = async (
 };
 
 export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
+  endpoints: (router) => {
+    router.post(
+      "/:id/review/skip",
+      authenticateMiddleware(),
+      asyncHandler(async (req, res) => {
+        const ownerId = (req as unknown as {user?: UserDocument}).user?._id;
+        const session = await FocusSession.findOne({
+          _id: req.params.id,
+          deleted: false,
+          ownerId,
+        });
+        if (!session) {
+          throw new APIError({status: 404, title: "Document not found"});
+        }
+        const skipped = await skipReview(session);
+        return res.json({data: skipped.toJSON()});
+      })
+    );
+  },
   instanceActions: {
     end: {
       handler: async ({doc}) => {
@@ -166,6 +282,13 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
       permissions: [Permissions.IsOwner],
       summary: "Issue a signed, expiring unlock grant for an active session",
     },
+    review: {
+      body: reviewBodySchema,
+      handler: async ({body, doc}) => submitReview(doc as FocusSessionDocument, body as ReviewBody),
+      method: "POST",
+      permissions: [Permissions.IsOwner],
+      summary: "Review an ended focus session and resolve parking lot items",
+    },
   },
   permissions: {
     create: [Permissions.IsAuthenticated],
@@ -197,7 +320,7 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
   },
   preUpdate: (body) => {
     const value = (body ?? {}) as Partial<FocusSessionDocument>;
-    // Owners may change only these fields. Ending goes through the `end` action, and
+    // Owners may change only these fields. Ending and review go through actions, and
     // sessions cannot be deleted (including by setting `deleted`).
     const update: Partial<FocusSessionDocument> = {};
     if (value.blockedDomains !== undefined) {
@@ -217,8 +340,16 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
   // Local-first sync (@terreno/syncdb): stream = focusSessions|owner:{ownerId}.
   sync: {scope: {type: "owner"}},
   validation: {
-    excludeFromCreate: ["ownerId", "status", "startedAt", "endedAt"],
-    excludeFromUpdate: ["ownerId", "status", "startedAt", "endedAt", "blocklistIds"],
+    excludeFromCreate: ["ownerId", "status", "startedAt", "endedAt", "review", "reviewSkippedAt"],
+    excludeFromUpdate: [
+      "ownerId",
+      "status",
+      "startedAt",
+      "endedAt",
+      "blocklistIds",
+      "review",
+      "reviewSkippedAt",
+    ],
     validateCreate: true,
     validateQuery: true,
     validateUpdate: true,

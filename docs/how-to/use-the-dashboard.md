@@ -5,8 +5,8 @@ Open the web app after signing in to use the dashboard screens.
 | Area | What it does |
 | --- | --- |
 | Today | Shows the day view. The active-session summary and weekly focus comparison arrive in later dashboard slices. |
-| Focus | Starts and manages a focus session from saved blocklists and one-off domains, with a parking lot for stray thoughts. |
-| History | Shows weekly focus-hour bars and a table of past focus sessions. |
+| Focus | Starts and manages a focus session from saved blocklists and one-off domains, with a parking lot for stray thoughts and the end-of-block review prompt. |
+| History | Shows weekly focus-hour bars, pending reviews and a table of past focus sessions. |
 | Blocklists | Creates, edits and deletes saved sets of distracting domains. |
 | Devices | Lists signed-in devices. Revoke controls arrive in a later slice. |
 | Profile | Manages account settings, including the week start day and timezone used by dashboard charts. |
@@ -46,10 +46,19 @@ These saved settings are the dashboard source for week boundaries, so the weekly
 
 Focus hours count session time from start to end, or to now for an active session, minus any timed peeks from unlock grants. The session table shows the date, duration, intention, blocked domains, peek count, and review status for each past session.
 
+## Review a Focus Block
+
+1. End a session from **Focus**, or open **History** when a past session says it is not reviewed.
+2. Enter what got done and an optional one-line note.
+3. For each parked thought, choose **Done**, **Carry** or **Dismiss**.
+4. Save the review, or skip it.
+
+If a session ends on another device, Focus shows **Review your last session** until you save or skip the review. Parked thoughts marked **Carry** stay open and appear during the next active session. Thoughts marked **Done** or **Dismiss** leave the parking lot.
+
 ## Capture Stray Thoughts
 
 1. Open **Focus** while a session is active.
 2. Enter the thought in **Parking lot**.
 3. Select **Park thought**.
 
-Open parked thoughts remain visible on Focus across reloads and later active sessions until the review workflow resolves them.
+Open parked thoughts remain visible on Focus across reloads and later active sessions until review marks them done or dismissed.

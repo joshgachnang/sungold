@@ -24,7 +24,14 @@ Select **Peek 5 min** to unblock the session's domains for five minutes on every
 
 ## End a session
 
-Select **End session**. You can have one active session at a time, so end the current one before starting another.
+Select **End session**. Focus opens the review prompt after the session ends.
+
+1. Enter what got done.
+2. Add an optional one-line note.
+3. Mark parked thoughts as **Done**, **Carry** or **Dismiss**.
+4. Save the review, or select **Skip**.
+
+Items marked **Carry** stay open for the next session. Items marked **Done** or **Dismiss** leave the parking lot. You can have one active session at a time, so end the current one before starting another.
 
 ## Errors
 

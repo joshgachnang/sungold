@@ -97,6 +97,14 @@ const injectedRtkApi = api
           url: `/focusSessions/${queryArg.id}/grants`,
         }),
       }),
+      focussessionsReview: build.mutation<FocussessionsReviewRes, FocussessionsReviewArgs>({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "POST",
+          url: `/focusSessions/${queryArg.id}/review`,
+        }),
+      }),
       getAdminConfig: build.query<GetAdminConfigRes, GetAdminConfigArgs>({
         providesTags: ["admin"],
         query: () => ({url: `/admin/config`}),
@@ -769,6 +777,20 @@ export type FocussessionsGrantsArgs = {
     reason?: "peek";
   };
 };
+export type FocussessionsReviewRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsReviewArgs = {
+  id: string;
+  body: {
+    done?: string;
+    items?: {
+      id: string;
+      status: "open" | "done" | "dismissed";
+    }[];
+    note?: string;
+  };
+};
 export type PostFocusSessionsRes = /** status 201 Successful create */ {
   /** The document id (String so offline sync clients can mint ids) */
   _id: string;
@@ -784,6 +806,16 @@ export type PostFocusSessionsRes = /** status 201 Successful create */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -814,6 +846,16 @@ export type PostFocusSessionsArgs = {
   intention?: string;
   /** The user who owns this session */
   ownerId?: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt?: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -845,6 +887,16 @@ export type GetFocusSessionsRes = /** status 200 Successful list */ {
     intention?: string;
     /** The user who owns this session */
     ownerId: string;
+    review?: {
+      /** What got done during the session */
+      done?: string;
+      /** One-line end-of-block review note */
+      note?: string;
+      /** When the session review was submitted */
+      reviewedAt?: string;
+    };
+    /** When the end-of-block review prompt was skipped */
+    reviewSkippedAt?: string;
     /** When the session started */
     startedAt: string;
     /** Whether the session is currently blocking (active) or finished (ended) */
@@ -893,6 +945,16 @@ export type GetFocusSessionsByIdRes = /** status 200 Successful read */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -924,6 +986,16 @@ export type PatchFocusSessionsByIdRes = /** status 200 Successful update */ {
   intention?: string;
   /** The user who owns this session */
   ownerId: string;
+  review?: {
+    /** What got done during the session */
+    done?: string;
+    /** One-line end-of-block review note */
+    note?: string;
+    /** When the session review was submitted */
+    reviewedAt?: string;
+  };
+  /** When the end-of-block review prompt was skipped */
+  reviewSkippedAt?: string;
   /** When the session started */
   startedAt: string;
   /** Whether the session is currently blocking (active) or finished (ended) */
@@ -956,6 +1028,16 @@ export type PatchFocusSessionsByIdArgs = {
     intention?: string;
     /** The user who owns this session */
     ownerId?: string;
+    review?: {
+      /** What got done during the session */
+      done?: string;
+      /** One-line end-of-block review note */
+      note?: string;
+      /** When the session review was submitted */
+      reviewedAt?: string;
+    };
+    /** When the end-of-block review prompt was skipped */
+    reviewSkippedAt?: string;
     /** When the session started */
     startedAt?: string;
     /** Whether the session is currently blocking (active) or finished (ended) */
@@ -1655,6 +1737,7 @@ export const {
   useDeleteBlocklistsByIdMutation,
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
+  useFocussessionsReviewMutation,
   usePostFocusSessionsMutation,
   useGetFocusSessionsQuery,
   useGetFocusSessionsByIdQuery,

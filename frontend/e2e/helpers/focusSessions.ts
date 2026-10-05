@@ -117,6 +117,21 @@ export const requestGrantViaApi = async (
   expect(granted.ok(), await granted.text()).toBe(true);
 };
 
+export const createParkingLotItemViaApi = async (
+  request: APIRequestContext,
+  sessionId: string,
+  text: string,
+  user: TestUser = TEST_USER
+): Promise<{_id: string; text: string}> => {
+  const created = await request.post(`${API_URL}/parkingLotItems`, {
+    data: {sessionId, text},
+    headers: {authorization: await authorizationFor(request, user)},
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const body = (await created.json()) as {data: {_id: string; text: string}};
+  return body.data;
+};
+
 export const endActiveSessions = async (
   request: APIRequestContext,
   user: TestUser = TEST_USER

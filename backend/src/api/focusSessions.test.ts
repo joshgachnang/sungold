@@ -2,6 +2,7 @@ import {beforeAll, describe, it} from "bun:test";
 import {configureOpenApiValidator, generateTokens, TerrenoApp} from "@terreno/api";
 import {assert} from "chai";
 import supertest from "supertest";
+import {ParkingLotItem} from "../models/parkingLotItem";
 import {User} from "../models/user";
 import type {UserDocument} from "../types/models/userTypes";
 import {blocklistRouter} from "./blocklists";
@@ -162,6 +163,93 @@ describe("focus sessions", () => {
       .set("Authorization", auth)
       .send({blockedDomains: ["reddit.com"]});
     assert.equal(next.status, 201);
+  });
+
+  it("reviews an ended session once and carries open parking lot items forward", async () => {
+    const user = await createUser("review-owner");
+    const auth = await authHeader(user);
+    const started = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({blockedDomains: ["x.com"], intention: "Write the review flow"});
+    const id = started.body.data._id as string;
+    const doneItem = await ParkingLotItem.create({
+      ownerId: user._id,
+      sessionId: id,
+      text: "Send the summary",
+    });
+    const carriedItem = await ParkingLotItem.create({
+      ownerId: user._id,
+      sessionId: id,
+      text: "Ask about the next block",
+    });
+    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+
+    const reviewed = await supertest(app)
+      .post(`/focusSessions/${id}/review`)
+      .set("Authorization", auth)
+      .send({
+        done: "Drafted the dashboard review",
+        items: [
+          {id: doneItem._id, status: "done"},
+          {id: carriedItem._id, status: "open"},
+        ],
+        note: "Keep the next step small",
+      });
+
+    assert.equal(reviewed.status, 200, JSON.stringify(reviewed.body));
+    assert.equal(reviewed.body.data.review.done, "Drafted the dashboard review");
+    assert.equal(reviewed.body.data.review.note, "Keep the next step small");
+    assert.isString(reviewed.body.data.review.reviewedAt);
+
+    const resolvedDoneItem = await ParkingLotItem.findById(doneItem._id).lean();
+    assert.equal(resolvedDoneItem?.status, "done");
+    assert.instanceOf(resolvedDoneItem?.resolvedAt, Date);
+    const openCarriedItem = await ParkingLotItem.findById(carriedItem._id).lean();
+    assert.equal(openCarriedItem?.status, "open");
+    assert.isUndefined(openCarriedItem?.resolvedAt);
+
+    const again = await supertest(app)
+      .post(`/focusSessions/${id}/review`)
+      .set("Authorization", auth)
+      .send({done: "Again", items: [], note: ""});
+    assert.equal(again.status, 409);
+  });
+
+  it("rejects review and skip for active, foreign, or already skipped sessions", async () => {
+    const user = await createUser("review-invalid");
+    const other = await createUser("review-invalid-other");
+    const auth = await authHeader(user);
+    const otherAuth = await authHeader(other);
+    const active = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({blockedDomains: ["x.com"]});
+    const id = active.body.data._id as string;
+
+    const activeReview = await supertest(app)
+      .post(`/focusSessions/${id}/review`)
+      .set("Authorization", auth)
+      .send({done: "", items: [], note: ""});
+    assert.equal(activeReview.status, 409);
+
+    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    const foreignSkip = await supertest(app)
+      .post(`/focusSessions/${id}/review/skip`)
+      .set("Authorization", otherAuth);
+    assert.oneOf(foreignSkip.status, [403, 404]);
+
+    const skipped = await supertest(app)
+      .post(`/focusSessions/${id}/review/skip`)
+      .set("Authorization", auth);
+    assert.equal(skipped.status, 200, JSON.stringify(skipped.body));
+    assert.isString(skipped.body.data.reviewSkippedAt);
+
+    const afterSkipReview = await supertest(app)
+      .post(`/focusSessions/${id}/review`)
+      .set("Authorization", auth)
+      .send({done: "Done", items: [], note: ""});
+    assert.equal(afterSkipReview.status, 409);
   });
 
   it("does not let another user read, list, end, or delete a session", async () => {

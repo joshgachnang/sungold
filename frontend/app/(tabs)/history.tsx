@@ -2,6 +2,7 @@ import {useQuery} from "@terreno/syncdb/react";
 import {
   BarChart,
   Box,
+  Button,
   Card,
   DataTable,
   type DataTableCellData,
@@ -13,7 +14,8 @@ import {
 } from "@terreno/ui";
 import {DateTime} from "luxon";
 import type React from "react";
-import {useMemo} from "react";
+import {useMemo, useState} from "react";
+import {ReviewSheet} from "@/components/ReviewSheet";
 import {useEnsureCalendarProfileDefaults} from "@/hooks/useEnsureCalendarProfileDefaults";
 import {useSyncLoaded} from "@/hooks/useSyncLoaded";
 import {useGetMeQuery} from "@/store/sdk";
@@ -27,6 +29,13 @@ interface FocusSession extends FocusHoursSession {
 }
 
 interface UnlockGrant extends FocusHoursGrant {}
+
+interface ParkingLotItem {
+  _id: string;
+  text: string;
+  status: "open" | "done" | "dismissed";
+  deleted?: boolean;
+}
 
 const SESSION_COLUMNS: DataTableColumn[] = [
   {columnType: "text", title: "Date", width: 150},
@@ -70,6 +79,12 @@ const HistoryScreen: React.FC = () => {
   const {data: profile} = useGetMeQuery();
   const sessions = useQuery<FocusSession>("focusSessions");
   const grants = useQuery<UnlockGrant>("unlockGrants");
+  const openParkingLotItems = useQuery<ParkingLotItem>("parkingLotItems", {
+    filter: (item) => !item.deleted && item.status === "open",
+  });
+  const [selectedReviewSessionId, setSelectedReviewSessionId] = useState<string | undefined>(
+    undefined
+  );
   const timezone = profile?.timezone || DateTime.local().zoneName || "UTC";
   const weekStartDay = profile?.weekStartDay ?? 1;
 
@@ -89,6 +104,16 @@ const HistoryScreen: React.FC = () => {
         .filter((session) => session.status === "ended" && session.endedAt)
         .sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? "")),
     [sessions]
+  );
+
+  const pendingReviewSessions = useMemo(
+    () =>
+      endedSessions.filter((session) => !session.review?.reviewedAt && !session.reviewSkippedAt),
+    [endedSessions]
+  );
+  const selectedReviewSession = useMemo(
+    () => pendingReviewSessions.find((session) => session._id === selectedReviewSessionId),
+    [pendingReviewSessions, selectedReviewSessionId]
   );
 
   const grantsBySessionId = useMemo(() => {
@@ -153,6 +178,44 @@ const HistoryScreen: React.FC = () => {
                 </Box>
               </Box>
             </Card>
+            {selectedReviewSession ? (
+              <ReviewSheet
+                items={openParkingLotItems}
+                onClose={() => setSelectedReviewSessionId(undefined)}
+                session={selectedReviewSession}
+              />
+            ) : null}
+            {pendingReviewSessions.length > 0 && !selectedReviewSession ? (
+              <Card>
+                <Box gap={3} testID="history-pending-reviews">
+                  <Heading size="sm">Pending reviews</Heading>
+                  {pendingReviewSessions.map((session) => (
+                    <Box
+                      direction="row"
+                      gap={2}
+                      key={session._id}
+                      testID={`history-pending-review-${session._id}`}
+                      wrap
+                    >
+                      <Box flex="grow">
+                        <Text>{session.intention || "Ended focus session"}</Text>
+                        <Text color="secondaryDark" size="sm">
+                          {DateTime.fromISO(session.endedAt as string)
+                            .setZone(timezone)
+                            .toFormat("LLL d, yyyy")}
+                        </Text>
+                      </Box>
+                      <Button
+                        onClick={() => setSelectedReviewSessionId(session._id)}
+                        testID={`history-review-button-${session._id}`}
+                        text="Review"
+                        variant="secondary"
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Card>
+            ) : null}
             <Card>
               <Box gap={3}>
                 <Heading size="sm">Sessions</Heading>

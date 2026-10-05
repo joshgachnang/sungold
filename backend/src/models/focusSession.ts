@@ -40,6 +40,29 @@ const focusSessionSchema = new mongoose.Schema<FocusSessionDocument, FocusSessio
       required: true,
       type: mongoose.Schema.Types.ObjectId,
     },
+    review: {
+      _id: false,
+      done: {
+        description: "What got done during the session",
+        maxlength: 280,
+        trim: true,
+        type: String,
+      },
+      note: {
+        description: "One-line end-of-block review note",
+        maxlength: 280,
+        trim: true,
+        type: String,
+      },
+      reviewedAt: {
+        description: "When the session review was submitted",
+        type: Date,
+      },
+    },
+    reviewSkippedAt: {
+      description: "When the end-of-block review prompt was skipped",
+      type: Date,
+    },
     startedAt: {
       default: (): Date => new Date(),
       description: "When the session started",

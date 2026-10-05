@@ -15,6 +15,7 @@ import {DateTime} from "luxon";
 import type React from "react";
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {Pressable} from "react-native";
+import {ReviewSheet} from "@/components/ReviewSheet";
 import {useSyncLoaded} from "@/hooks/useSyncLoaded";
 import {
   useBlocklistsStarterMutation,
@@ -30,6 +31,9 @@ interface FocusSession {
   blockedDomains: string[];
   blocklistIds?: string[];
   intention?: string;
+  endedAt?: string;
+  review?: {reviewedAt?: string};
+  reviewSkippedAt?: string;
   startedAt: string;
 }
 
@@ -219,7 +223,11 @@ const StartSessionForm: React.FC<{
   );
 };
 
-const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
+const ActiveSession: React.FC<{
+  onEnded: (sessionId: string) => void;
+  parkingLotItems: ParkingLotItem[];
+  session: FocusSession;
+}> = ({onEnded, parkingLotItems, session}) => {
   const now = useNow();
   const [endSession, {isLoading: isEnding, error: endError}] = useFocussessionsEndMutation();
   const [requestGrant, {isLoading: isRequesting, error: grantError}] =
@@ -230,9 +238,6 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
   const [parkingLotError, setParkingLotError] = useState<string | undefined>(undefined);
   const grants = useQuery<UnlockGrant>("unlockGrants", {
     filter: (grant) => grant.sessionId === session._id,
-  });
-  const parkingLotItems = useQuery<ParkingLotItem>("parkingLotItems", {
-    filter: (item) => !item.deleted && item.status === "open",
   });
 
   const activeGrant = useMemo(
@@ -274,8 +279,11 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
   }, [requestGrant, session._id]);
 
   const handleEnd = useCallback(async (): Promise<void> => {
-    await endSession(session._id);
-  }, [endSession, session._id]);
+    const result = await endSession(session._id);
+    if (!("error" in result) || !result.error) {
+      onEnded(session._id);
+    }
+  }, [endSession, onEnded, session._id]);
 
   const handleCaptureParkingLotItem = useCallback(async (): Promise<void> => {
     const text = parkingLotText.trim();
@@ -398,13 +406,50 @@ const FocusScreen: React.FC = () => {
   const loaded = useSyncLoaded();
   const [seedStarterBlocklists, {isLoading: isSeedingBlocklists}] = useBlocklistsStarterMutation();
   const [seedAttempted, setSeedAttempted] = useState<boolean>(false);
-  const activeSessions = useQuery<FocusSession>("focusSessions", {
-    filter: (session) => session.status === "active",
+  const sessions = useQuery<FocusSession>("focusSessions");
+  const activeSessions = useMemo(
+    () => sessions.filter((focusSession) => focusSession.status === "active"),
+    [sessions]
+  );
+  const openParkingLotItems = useQuery<ParkingLotItem>("parkingLotItems", {
+    filter: (item) => !item.deleted && item.status === "open",
   });
   const blocklists = useQuery<Blocklist>("blocklists", {
     filter: (blocklist) => !blocklist.deleted,
   });
   const session = activeSessions[0];
+  const [localReviewSessionId, setLocalReviewSessionId] = useState<string | undefined>(undefined);
+  const [selectedReviewSessionId, setSelectedReviewSessionId] = useState<string | undefined>(
+    undefined
+  );
+  const [resolvedReviewSessionIds, setResolvedReviewSessionIds] = useState<string[]>([]);
+  const reviewableSessions = useMemo(
+    () =>
+      sessions
+        .filter(
+          (focusSession) =>
+            focusSession.status === "ended" &&
+            focusSession.endedAt &&
+            !focusSession.review?.reviewedAt &&
+            !focusSession.reviewSkippedAt &&
+            !resolvedReviewSessionIds.includes(focusSession._id)
+        )
+        .sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? "")),
+    [resolvedReviewSessionIds, sessions]
+  );
+  const bannerSession = reviewableSessions[0];
+  const selectedReviewSession = useMemo(
+    () => reviewableSessions.find((focusSession) => focusSession._id === selectedReviewSessionId),
+    [reviewableSessions, selectedReviewSessionId]
+  );
+  useEffect(() => {
+    if (!localReviewSessionId || selectedReviewSessionId) {
+      return;
+    }
+    if (reviewableSessions.some((focusSession) => focusSession._id === localReviewSessionId)) {
+      setSelectedReviewSessionId(localReviewSessionId);
+    }
+  }, [localReviewSessionId, reviewableSessions, selectedReviewSessionId]);
   const handleSeedStarterBlocklists = useCallback((): void => {
     if (seedAttempted) {
       return;
@@ -420,14 +465,52 @@ const FocusScreen: React.FC = () => {
           <Box alignItems="center" padding={4} testID="focus-loading">
             <Spinner />
           </Box>
-        ) : session ? (
-          <ActiveSession session={session} />
         ) : (
-          <StartSessionForm
-            blocklists={blocklists}
-            isSeedingBlocklists={isSeedingBlocklists}
-            onSeedStarterBlocklists={handleSeedStarterBlocklists}
-          />
+          <>
+            {bannerSession && !selectedReviewSession ? (
+              <Card>
+                <Box gap={2} testID="review-banner">
+                  <Heading size="sm">Review your last session</Heading>
+                  <Text color="secondaryDark">
+                    Finish the block by saving what got done or carrying parked thoughts forward.
+                  </Text>
+                  <Button
+                    onClick={() => setSelectedReviewSessionId(bannerSession._id)}
+                    testID="review-banner-open-button"
+                    text="Review session"
+                  />
+                </Box>
+              </Card>
+            ) : null}
+            {selectedReviewSession ? (
+              <ReviewSheet
+                items={openParkingLotItems}
+                onClose={() => {
+                  setResolvedReviewSessionIds((current) =>
+                    current.includes(selectedReviewSession._id)
+                      ? current
+                      : [...current, selectedReviewSession._id]
+                  );
+                  setSelectedReviewSessionId(undefined);
+                  setLocalReviewSessionId(undefined);
+                }}
+                session={selectedReviewSession}
+              />
+            ) : null}
+            {session ? (
+              <ActiveSession
+                onEnded={setLocalReviewSessionId}
+                parkingLotItems={openParkingLotItems}
+                session={session}
+              />
+            ) : (
+              <StartSessionForm
+                blocklists={blocklists}
+                isSeedingBlocklists={isSeedingBlocklists}
+                onSeedStarterBlocklists={handleSeedStarterBlocklists}
+              />
+            )}
+          </>
         )}
       </Box>
     </Page>
