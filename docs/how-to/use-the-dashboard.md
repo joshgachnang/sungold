@@ -8,7 +8,7 @@ Open the web app after signing in to use the dashboard screens.
 | Focus | Starts and manages a focus session from saved blocklists and one-off domains, with a parking lot for stray thoughts and the end-of-block review prompt. |
 | History | Shows weekly focus-hour bars, pending reviews and a table of past focus sessions. |
 | Blocklists | Creates, edits and deletes saved sets of distracting domains. |
-| Devices | Lists signed-in devices. Revoke controls arrive in a later slice. |
+| Devices | Lists signed-in devices and revokes device access. |
 | Profile | Manages account settings, including the week start day and timezone used by dashboard charts. |
 
 Wide browser windows use the left sidebar. Phones and narrow browser windows use bottom tabs with the same destinations.
@@ -63,6 +63,15 @@ Focus hours count session time from start to end, or to now for an active sessio
 4. Save the review, or skip it.
 
 If a session ends on another device, Focus shows **Review your last session** until you save or skip the review. Parked thoughts marked **Carry** stay open and appear during the next active session. Thoughts marked **Done** or **Dismiss** leave the parking lot.
+
+## Manage Devices
+
+1. Open **Devices**.
+2. Review each signed-in device's name, client and sign-in status.
+3. Select **Revoke** for a device that should no longer access Sungold.
+4. Confirm the revoke action.
+
+Revoked devices lose access immediately and must run the device sign-in handoff again before they can sync focus state or enforce blocks. Revoking a native device does not sign out your current web session.
 
 ## Capture Stray Thoughts
 

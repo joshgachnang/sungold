@@ -106,7 +106,7 @@ Details, files and verification for each task are in [`2026-10-04-web-dashboard-
 - [x] **T6** — Add the parking lot with capture on the Focus screen
 - [x] **T7** — Add the end-of-block review prompt, banner and History review
 - [x] **T8** — Add the Today overview
-- [ ] **T9** — Add the Devices screen
+- [x] **T9** — Add the Devices screen
 
 ## Sign-off
 
