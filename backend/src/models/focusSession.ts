@@ -77,7 +77,14 @@ const focusSessionSchema = new mongoose.Schema<FocusSessionDocument, FocusSessio
       type: String,
     },
   },
-  {strict: "throw", toJSON: {virtuals: true}, toObject: {virtuals: true}}
+  {
+    // Concurrent writes (e.g. two devices reviewing at once) fail with a version error
+    // instead of both succeeding.
+    optimisticConcurrency: true,
+    strict: "throw",
+    toJSON: {virtuals: true},
+    toObject: {virtuals: true},
+  }
 );
 
 // At most one active session per user, enforced by the database as well as the router.
@@ -89,6 +96,10 @@ focusSessionSchema.index(
 // Two concurrent starts can both pass the router's check; the index rejects the loser,
 // which should see the same 409 as the sequential case rather than a generic write error.
 focusSessionSchema.post("save", {errorHandler: true}, (error, _doc, next): void => {
+  if ((error as {name?: string}).name === "VersionError") {
+    next(new APIError({status: 409, title: "This session was just changed on another device"}));
+    return;
+  }
   const duplicate = error as {code?: number; keyPattern?: Record<string, unknown>};
   if (duplicate.code === 11000) {
     const title = duplicate.keyPattern?.ownerId

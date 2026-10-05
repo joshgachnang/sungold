@@ -91,6 +91,49 @@ test.describe("End-of-block review", () => {
     await expect(page.getByTestId("review-banner")).toBeHidden();
   });
 
+  test("user only sees the banner for the most recent ended session", async ({page, request}) => {
+    await startSessionViaApi(request, ["x.com"], user, "Older session");
+    await endActiveSessions(request, user);
+    await startSessionViaApi(request, ["reddit.com"], user, "Latest session");
+    await endActiveSessions(request, user);
+
+    await loginAs(page, user);
+    await page.goto("/focus");
+    await page.getByTestId("review-banner").waitFor({state: "visible"});
+    await page.getByTestId("review-banner-open-button").click();
+    await page.getByTestId("review-sheet").waitFor({state: "visible"});
+    await expect(page.getByTestId("review-sheet")).toContainText("Latest session");
+    await page.getByTestId("review-skip-button").click();
+    await expect(page.getByTestId("review-sheet")).toBeHidden();
+    // The older unreviewed session does not take its place.
+    await expect(page.getByTestId("review-banner")).toBeHidden();
+    await page.reload();
+    await page.getByTestId("focus-screen").waitFor({state: "visible"});
+    await page.getByTestId("focus-start-button").waitFor({state: "visible"});
+    await expect(page.getByTestId("review-banner")).toBeHidden();
+  });
+
+  test("user reviewing an older session does not see thoughts parked later", async ({
+    page,
+    request,
+  }) => {
+    const older = await startSessionViaApi(request, ["x.com"], user, "Older session");
+    const olderThought = `Older thought ${crypto.randomUUID()}`;
+    await createParkingLotItemViaApi(request, older._id, olderThought, user);
+    await endActiveSessions(request, user);
+    const current = await startSessionViaApi(request, ["reddit.com"], user, "Current session");
+    const laterThought = `Later thought ${crypto.randomUUID()}`;
+    await createParkingLotItemViaApi(request, current._id, laterThought, user);
+
+    await loginAs(page, user);
+    await page.goto("/history");
+    await page.getByTestId("history-screen").waitFor({state: "visible"});
+    await page.getByTestId(`history-review-button-${older._id}`).click();
+    await page.getByTestId("review-sheet").waitFor({state: "visible"});
+    await expect(page.getByTestId(/^review-item-/).filter({hasText: olderThought})).toBeVisible();
+    await expect(page.getByTestId(/^review-item-/).filter({hasText: laterThought})).toHaveCount(0);
+  });
+
   test("user can open a pending review from History", async ({page, request}) => {
     const session = await startSessionViaApi(request, ["youtube.com"], user, "History review");
     await createParkingLotItemViaApi(request, session._id, "Follow up after history", user);

@@ -416,19 +416,24 @@ export const FocusSessionPanel: React.FC<{testIDPrefix: "focus" | "today"}> = ({
     undefined
   );
   const [resolvedReviewSessionIds, setResolvedReviewSessionIds] = useState<string[]>([]);
-  const reviewableSessions = useMemo(
+  // Only the most recent ended session is ever offered for review here. Once it is reviewed
+  // or skipped the banner goes away; older unreviewed sessions stay reviewable from History.
+  const lastEndedSession = useMemo(
     () =>
       sessions
-        .filter(
-          (focusSession) =>
-            focusSession.status === "ended" &&
-            focusSession.endedAt &&
-            !focusSession.review?.reviewedAt &&
-            !focusSession.reviewSkippedAt &&
-            !resolvedReviewSessionIds.includes(focusSession._id)
-        )
-        .sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? "")),
-    [resolvedReviewSessionIds, sessions]
+        .filter((focusSession) => focusSession.status === "ended" && focusSession.endedAt)
+        .sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? ""))[0],
+    [sessions]
+  );
+  const reviewableSessions = useMemo(
+    () =>
+      lastEndedSession &&
+      !lastEndedSession.review?.reviewedAt &&
+      !lastEndedSession.reviewSkippedAt &&
+      !resolvedReviewSessionIds.includes(lastEndedSession._id)
+        ? [lastEndedSession]
+        : [],
+    [lastEndedSession, resolvedReviewSessionIds]
   );
   const bannerSession = reviewableSessions[0];
   const selectedReviewSession = useMemo(

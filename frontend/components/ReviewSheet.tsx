@@ -1,11 +1,14 @@
 import {Box, Button, Card, Heading, Text, TextArea, TextField} from "@terreno/ui";
 import type React from "react";
 import {useCallback, useMemo, useState} from "react";
-import {useFocussessionsReviewMutation} from "@/store/openApiSdk";
-import {useFocussessionsReviewSkipMutation} from "@/store/reviewApi";
+import {
+  useFocussessionsReviewMutation,
+  useFocussessionsSkipReviewMutation,
+} from "@/store/openApiSdk";
 
 export interface ReviewSession {
   _id: string;
+  endedAt?: string | null;
   intention?: string;
 }
 
@@ -13,7 +16,25 @@ export interface ReviewParkingLotItem {
   _id: string;
   text: string;
   status: "open" | "done" | "dismissed";
+  created?: string;
 }
+
+/**
+ * Items a session's review may resolve, matching the server rule: still open and already
+ * captured when the session ended (in it or carried into it). Thoughts parked in a later
+ * session are not offered.
+ */
+export const reviewableItems = (
+  session: ReviewSession,
+  items: ReviewParkingLotItem[]
+): ReviewParkingLotItem[] =>
+  items.filter(
+    (item) =>
+      item.status === "open" &&
+      Boolean(session.endedAt) &&
+      Boolean(item.created) &&
+      (item.created as string) <= (session.endedAt as string)
+  );
 
 type ReviewItemStatus = "open" | "done" | "dismissed";
 
@@ -31,7 +52,8 @@ export const ReviewSheet: React.FC<{
   items: ReviewParkingLotItem[];
   onClose: () => void;
   session: ReviewSession;
-}> = ({items, onClose, session}) => {
+}> = ({items: allItems, onClose, session}) => {
+  const items = useMemo(() => reviewableItems(session, allItems), [allItems, session]);
   const [done, setDone] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [itemStatuses, setItemStatuses] = useState<Record<string, ReviewItemStatus>>(() =>
@@ -39,7 +61,7 @@ export const ReviewSheet: React.FC<{
   );
   const [error, setError] = useState<string | undefined>(undefined);
   const [submitReview, {isLoading: isSubmitting}] = useFocussessionsReviewMutation();
-  const [skipReview, {isLoading: isSkipping}] = useFocussessionsReviewSkipMutation();
+  const [skipReview, {isLoading: isSkipping}] = useFocussessionsSkipReviewMutation();
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => a.text.localeCompare(b.text)),

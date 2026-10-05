@@ -105,6 +105,16 @@ const injectedRtkApi = api
           url: `/focusSessions/${queryArg.id}/review`,
         }),
       }),
+      focussessionsSkipReview: build.mutation<
+        FocussessionsSkipReviewRes,
+        FocussessionsSkipReviewArgs
+      >({
+        invalidatesTags: ["focussessions"],
+        query: (queryArg) => ({
+          method: "POST",
+          url: `/focusSessions/${queryArg}/skipReview`,
+        }),
+      }),
       getAdminConfig: build.query<GetAdminConfigRes, GetAdminConfigArgs>({
         providesTags: ["admin"],
         query: () => ({url: `/admin/config`}),
@@ -791,6 +801,10 @@ export type FocussessionsReviewArgs = {
     note?: string;
   };
 };
+export type FocussessionsSkipReviewRes = /** status 200 Successful response */ {
+  data?: object;
+};
+export type FocussessionsSkipReviewArgs = string;
 export type PostFocusSessionsRes = /** status 201 Successful create */ {
   /** The document id (String so offline sync clients can mint ids) */
   _id: string;
@@ -1738,6 +1752,7 @@ export const {
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
   useFocussessionsReviewMutation,
+  useFocussessionsSkipReviewMutation,
   usePostFocusSessionsMutation,
   useGetFocusSessionsQuery,
   useGetFocusSessionsByIdQuery,

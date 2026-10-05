@@ -29,7 +29,7 @@ const timezoneOptions = [
   "Europe/Paris",
   "Asia/Tokyo",
   "Australia/Sydney",
-].map((timezone) => ({label: timezone.replace("_", " "), value: timezone}));
+].map((timezone) => ({label: timezone.replaceAll("_", " "), value: timezone}));
 
 const deviceTimezone = (): string => DateTime.local().zoneName ?? "UTC";
 
@@ -49,7 +49,7 @@ const ProfileScreen: React.FC = () => {
   const timezoneChoices = useMemo(() => {
     const options = [...timezoneOptions];
     if (!options.some((option) => option.value === timezone)) {
-      options.unshift({label: timezone.replace("_", " "), value: timezone});
+      options.unshift({label: timezone.replaceAll("_", " "), value: timezone});
     }
     return options;
   }, [timezone]);

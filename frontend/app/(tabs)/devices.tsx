@@ -28,7 +28,7 @@ const errorMessage = (error: unknown): string => {
 };
 
 const DevicesScreen: React.FC = () => {
-  const {data, error, isFetching, isLoading} = useGetDeviceSessionsQuery({sort: "-created"});
+  const {data, error, isLoading} = useGetDeviceSessionsQuery({sort: "-created"});
   const [revokeDevice, {isLoading: isRevoking}] = useDevicesessionsRevokeMutation();
   const [confirmDevice, setConfirmDevice] = useState<DeviceSession | undefined>(undefined);
   const [revokeError, setRevokeError] = useState<string | undefined>(undefined);
@@ -59,7 +59,7 @@ const DevicesScreen: React.FC = () => {
             </Text>
           </Box>
         </Card>
-        {isLoading || isFetching ? (
+        {isLoading ? (
           <Box alignItems="center" padding={4} testID="devices-loading">
             <Spinner />
           </Box>

@@ -5,6 +5,7 @@ import type React from "react";
 import {useMemo} from "react";
 import {FocusSessionPanel} from "@/components/FocusSessionPanel";
 import {useEnsureCalendarProfileDefaults} from "@/hooks/useEnsureCalendarProfileDefaults";
+import {useMinuteNow} from "@/hooks/useMinuteNow";
 import {useGetMeQuery} from "@/store/sdk";
 import {type FocusHoursGrant, type FocusHoursSession, focusHoursByWeek} from "@/utils/focusHours";
 
@@ -23,16 +24,18 @@ const TodayScreen: React.FC = () => {
   const {data: profile} = useGetMeQuery();
   const sessions = useQuery<FocusHoursSession>("focusSessions");
   const grants = useQuery<FocusHoursGrant>("unlockGrants");
+  const now = useMinuteNow();
   const timezone = profile?.timezone || DateTime.local().zoneName || "UTC";
   const weekStartDay = profile?.weekStartDay ?? 1;
   const weeks = useMemo(
     () =>
       focusHoursByWeek(sessions, grants, {
+        now,
         timezone,
         weekStartDay,
         weeks: 2,
       }),
-    [grants, sessions, timezone, weekStartDay]
+    [grants, now, sessions, timezone, weekStartDay]
   );
   const lastWeek = weeks.at(0)?.hours ?? 0;
   const thisWeek = weeks.at(1)?.hours ?? 0;

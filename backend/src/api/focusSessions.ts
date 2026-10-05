@@ -1,12 +1,4 @@
-import {
-  APIError,
-  asyncHandler,
-  authenticateMiddleware,
-  modelRouter,
-  OwnerQueryFilter,
-  Permissions,
-  z,
-} from "@terreno/api";
+import {APIError, modelRouter, OwnerQueryFilter, Permissions, z} from "@terreno/api";
 import mongoose from "mongoose";
 import {Blocklist} from "../models/blocklist";
 import {FocusSession} from "../models/focusSession";
@@ -55,12 +47,17 @@ const ensureReviewable = (session: FocusSessionDocument): void => {
   }
 };
 
-const applyReviewItems = async (
+/**
+ * Parking-lot items a session's review may resolve: still open, and already captured when the
+ * session ended (captured in it or carried into it). Items parked in later sessions, and items
+ * already done or dismissed, are out of reach.
+ */
+const loadReviewItems = async (
   session: FocusSessionDocument,
   items: ReviewBody["items"]
-): Promise<void> => {
+): Promise<ParkingLotItemDocument[]> => {
   if (items.length === 0) {
-    return;
+    return [];
   }
   const uniqueIds = Array.from(new Set(items.map((item) => item.id)));
   if (uniqueIds.length !== items.length) {
@@ -72,26 +69,36 @@ const applyReviewItems = async (
   }
   const existingItems = await ParkingLotItem.find({
     _id: {$in: uniqueIds},
+    created: {$lte: session.endedAt},
     deleted: false,
     ownerId: session.ownerId,
+    status: "open",
   }).exec();
   if (existingItems.length !== uniqueIds.length) {
     throw new APIError({
-      fields: {items: "Choose parking lot items from your account"},
+      fields: {items: "Choose open parking lot items from this session"},
       status: 400,
       title: "Invalid review items",
     });
   }
+  return existingItems;
+};
+
+const resolveReviewItems = async (
+  existingItems: ParkingLotItemDocument[],
+  items: ReviewBody["items"]
+): Promise<void> => {
   const byId = new Map(existingItems.map((item) => [item._id, item]));
   const now = new Date();
-  await Promise.all(
-    items.map(async (reviewItem) => {
-      const item = byId.get(reviewItem.id) as ParkingLotItemDocument;
-      item.status = reviewItem.status;
-      item.resolvedAt = reviewItem.status === "open" ? undefined : now;
-      await item.save();
-    })
-  );
+  for (const reviewItem of items) {
+    if (reviewItem.status === "open") {
+      continue;
+    }
+    const item = byId.get(reviewItem.id) as ParkingLotItemDocument;
+    item.status = reviewItem.status;
+    item.resolvedAt = now;
+    await item.save();
+  }
 };
 
 const submitReview = async (
@@ -99,13 +106,18 @@ const submitReview = async (
   body: ReviewBody
 ): Promise<FocusSessionDocument> => {
   ensureReviewable(session);
-  await applyReviewItems(session, body.items);
+  // Validate everything before writing anything.
+  const items = await loadReviewItems(session, body.items);
   session.review = {
     done: body.done.trim(),
     note: body.note.trim(),
     reviewedAt: new Date(),
   };
+  // Claims the review: a concurrent review or skip of the same session fails with 409 here,
+  // before any item changes. If resolving items fails afterwards they stay open (carried
+  // forward), which loses nothing.
   await session.save();
+  await resolveReviewItems(items, body.items);
   return session;
 };
 
@@ -208,25 +220,6 @@ const cleanStartDomains = async (
 };
 
 export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
-  endpoints: (router) => {
-    router.post(
-      "/:id/review/skip",
-      authenticateMiddleware(),
-      asyncHandler(async (req, res) => {
-        const ownerId = (req as unknown as {user?: UserDocument}).user?._id;
-        const session = await FocusSession.findOne({
-          _id: req.params.id,
-          deleted: false,
-          ownerId,
-        });
-        if (!session) {
-          throw new APIError({status: 404, title: "Document not found"});
-        }
-        const skipped = await skipReview(session);
-        return res.json({data: skipped.toJSON()});
-      })
-    );
-  },
   instanceActions: {
     end: {
       handler: async ({doc}) => {
@@ -288,6 +281,12 @@ export const focusSessionRouter = modelRouter("/focusSessions", FocusSession, {
       method: "POST",
       permissions: [Permissions.IsOwner],
       summary: "Review an ended focus session and resolve parking lot items",
+    },
+    skipReview: {
+      handler: async ({doc}) => skipReview(doc as FocusSessionDocument),
+      method: "POST",
+      permissions: [Permissions.IsOwner],
+      summary: "Skip the review of an ended focus session",
     },
   },
   permissions: {

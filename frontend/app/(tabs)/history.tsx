@@ -17,6 +17,7 @@ import type React from "react";
 import {useMemo, useState} from "react";
 import {ReviewSheet} from "@/components/ReviewSheet";
 import {useEnsureCalendarProfileDefaults} from "@/hooks/useEnsureCalendarProfileDefaults";
+import {useMinuteNow} from "@/hooks/useMinuteNow";
 import {useSyncLoaded} from "@/hooks/useSyncLoaded";
 import {useGetMeQuery} from "@/store/sdk";
 import {type FocusHoursGrant, type FocusHoursSession, focusHoursByWeek} from "@/utils/focusHours";
@@ -85,17 +86,19 @@ const HistoryScreen: React.FC = () => {
   const [selectedReviewSessionId, setSelectedReviewSessionId] = useState<string | undefined>(
     undefined
   );
+  const now = useMinuteNow();
   const timezone = profile?.timezone || DateTime.local().zoneName || "UTC";
   const weekStartDay = profile?.weekStartDay ?? 1;
 
   const weeks = useMemo(
     () =>
       focusHoursByWeek(sessions, grants, {
+        now,
         timezone,
         weekStartDay,
         weeks: 8,
       }),
-    [grants, sessions, timezone, weekStartDay]
+    [grants, now, sessions, timezone, weekStartDay]
   );
 
   const endedSessions = useMemo(

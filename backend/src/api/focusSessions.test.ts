@@ -216,6 +216,94 @@ describe("focus sessions", () => {
     assert.equal(again.status, 409);
   });
 
+  it("only lets a review resolve open items that existed while the session ran", async () => {
+    const user = await createUser("review-scope");
+    const auth = await authHeader(user);
+    const first = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({blockedDomains: ["x.com"]});
+    const firstId = first.body.data._id as string;
+    const carriedIn = await ParkingLotItem.create({
+      ownerId: user._id,
+      sessionId: "earlier",
+      text: "Old thought",
+    });
+    const alreadyDone = await ParkingLotItem.create({
+      ownerId: user._id,
+      resolvedAt: new Date(),
+      sessionId: firstId,
+      status: "done",
+      text: "Finished thought",
+    });
+    await supertest(app).post(`/focusSessions/${firstId}/end`).set("Authorization", auth);
+
+    // A thought parked in a later session is not part of the first session's review.
+    const second = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({blockedDomains: ["x.com"]});
+    const later = await ParkingLotItem.create({
+      ownerId: user._id,
+      sessionId: second.body.data._id,
+      text: "Newer thought",
+    });
+
+    const touchesLater = await supertest(app)
+      .post(`/focusSessions/${firstId}/review`)
+      .set("Authorization", auth)
+      .send({done: "", items: [{id: later._id, status: "dismissed"}], note: ""});
+    assert.equal(touchesLater.status, 400, JSON.stringify(touchesLater.body));
+
+    const reopensDone = await supertest(app)
+      .post(`/focusSessions/${firstId}/review`)
+      .set("Authorization", auth)
+      .send({done: "", items: [{id: alreadyDone._id, status: "open"}], note: ""});
+    assert.equal(reopensDone.status, 400);
+
+    // Rejected requests changed nothing, and the session can still be reviewed.
+    assert.equal((await ParkingLotItem.findById(later._id).lean())?.status, "open");
+    assert.equal((await ParkingLotItem.findById(alreadyDone._id).lean())?.status, "done");
+    const reviewed = await supertest(app)
+      .post(`/focusSessions/${firstId}/review`)
+      .set("Authorization", auth)
+      .send({done: "Done", items: [{id: carriedIn._id, status: "done"}], note: ""});
+    assert.equal(reviewed.status, 200, JSON.stringify(reviewed.body));
+    assert.equal((await ParkingLotItem.findById(carriedIn._id).lean())?.status, "done");
+  });
+
+  it("accepts only one of two concurrent reviews of the same session", async () => {
+    const user = await createUser("review-race");
+    const auth = await authHeader(user);
+    const started = await supertest(app)
+      .post("/focusSessions")
+      .set("Authorization", auth)
+      .send({blockedDomains: ["x.com"]});
+    const id = started.body.data._id as string;
+    const item = await ParkingLotItem.create({ownerId: user._id, sessionId: id, text: "Race item"});
+    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+
+    const results = await Promise.all([
+      supertest(app)
+        .post(`/focusSessions/${id}/review`)
+        .set("Authorization", auth)
+        .send({done: "From the Mac", items: [{id: item._id, status: "done"}], note: ""}),
+      supertest(app).post(`/focusSessions/${id}/skipReview`).set("Authorization", auth),
+    ]);
+    const statuses = results.map((res) => res.status).sort();
+    assert.deepEqual(statuses, [200, 409], JSON.stringify(results.map((res) => res.body)));
+
+    const stored = await supertest(app).get(`/focusSessions/${id}`).set("Authorization", auth);
+    const reviewedAndSkipped =
+      Boolean(stored.body.data.review?.reviewedAt) && Boolean(stored.body.data.reviewSkippedAt);
+    assert.isFalse(reviewedAndSkipped);
+    const winnerWasSkip = results[1].status === 200;
+    assert.equal(
+      (await ParkingLotItem.findById(item._id).lean())?.status,
+      winnerWasSkip ? "open" : "done"
+    );
+  });
+
   it("rejects review and skip for active, foreign, or already skipped sessions", async () => {
     const user = await createUser("review-invalid");
     const other = await createUser("review-invalid-other");
@@ -235,12 +323,12 @@ describe("focus sessions", () => {
 
     await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
     const foreignSkip = await supertest(app)
-      .post(`/focusSessions/${id}/review/skip`)
+      .post(`/focusSessions/${id}/skipReview`)
       .set("Authorization", otherAuth);
     assert.oneOf(foreignSkip.status, [403, 404]);
 
     const skipped = await supertest(app)
-      .post(`/focusSessions/${id}/review/skip`)
+      .post(`/focusSessions/${id}/skipReview`)
       .set("Authorization", auth);
     assert.equal(skipped.status, 200, JSON.stringify(skipped.body));
     assert.isString(skipped.body.data.reviewSkippedAt);
