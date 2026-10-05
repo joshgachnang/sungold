@@ -3,7 +3,7 @@ import Foundation
 
 /// A grant as the server signed it: `payload` is base64url of canonical JSON (contract v1),
 /// `signature` is Ed25519 over those exact bytes, base64url.
-struct SignedGrant: Codable, Equatable {
+struct SignedGrant: Codable, Hashable {
     let payload: String
     let signature: String
 }
@@ -39,7 +39,7 @@ struct GrantVerifier {
             let signature = Base64URL.decode(grant.signature),
             publicKey.isValidSignature(signature, for: payloadBytes),
             let object = try? JSONSerialization.jsonObject(with: payloadBytes) as? [String: Any],
-            object["v"] as? Int == 1,
+            Self.isInteger(object["v"], equalTo: 1),
             object["scope"] as? String == "all",
             let grantId = object["grantId"] as? String,
             let userId = object["userId"] as? String,
@@ -50,6 +50,32 @@ struct GrantVerifier {
         else { return nil }
         return GrantPayload(grantId: grantId, userId: userId, sessionId: sessionId,
                             issuedAt: issuedAt, expiresAt: expiresAt)
+    }
+
+    /// JSONSerialization returns NSNumber for true, 1 and 1.0 alike; only an integer counts.
+    static func isInteger(_ value: Any?, equalTo expected: Int) -> Bool {
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+            ["c", "s", "i", "l", "q", "C", "S", "I", "L", "Q"].contains(String(cString: number.objCType))
+        else { return false }
+        return number.intValue == expected
+    }
+}
+
+/// Verifies each distinct grant once; the filter checks grants on every new connection.
+final class CachingGrantVerifier {
+    private let verifier: GrantVerifier
+    private var cache: [SignedGrant: GrantPayload?] = [:]
+    private let lock = NSLock()
+
+    init(_ verifier: GrantVerifier) { self.verifier = verifier }
+
+    func verify(_ grant: SignedGrant) -> GrantPayload? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = cache[grant] { return cached }
+        let payload = verifier.verify(grant)
+        cache[grant] = payload
+        return payload
     }
 }
 

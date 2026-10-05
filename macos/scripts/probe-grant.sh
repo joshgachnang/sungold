@@ -51,7 +51,8 @@ session_id=$(curl -s -X POST "${auth[@]}" "$API/focusSessions" \
   -d "{\"blockedDomains\":[\"$BLOCKED\"],\"intention\":\"grant probe\"}" | json "['data']['_id']")
 echo "$(stamp) started session $session_id"
 wait_log "filter blocking domains=$BLOCKED grants=0"
-expect "$BLOCKED" blocked
+# "connection refused" (exit 7): DNS still answers and only the connection is dropped.
+expect "$BLOCKED" "blocked (curl exit 7)"
 
 expires=$(curl -s -X POST "${auth[@]}" "$API/focusSessions/$session_id/grants" -d '{"minutes":1}' | json "['data']['expiresAt']")
 echo "$(stamp) peek granted until $expires"
@@ -68,6 +69,6 @@ end = datetime.fromisoformat('$expires'.replace('Z', '+00:00'))
 print(max(0, int((end - datetime.now(timezone.utc)).total_seconds()) + 2))")
 echo "$(stamp) waiting ${wait_seconds}s for the peek to expire"
 sleep "$wait_seconds"
-expect "$BLOCKED" blocked
-expect "www.$BLOCKED" blocked
+expect "$BLOCKED" "blocked (curl exit 7)"
+expect "www.$BLOCKED" "blocked (curl exit 7)"
 echo "$(stamp) PASS"

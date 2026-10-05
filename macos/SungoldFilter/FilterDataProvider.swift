@@ -9,7 +9,7 @@ import Security
 /// its expiry even if the app has quit or the Mac is offline.
 final class FilterDataProvider: NEFilterDataProvider {
     private let logger = Logger(subsystem: "app.sungold.mac.filter", category: "filter")
-    private let verifier = GrantVerifier.pinned()
+    private let verifier = GrantVerifier.pinned().map(CachingGrantVerifier.init)
     private let tracker = UnlockTracker()
 
     override func startFilter(completionHandler: @escaping (Error?) -> Void) {
@@ -34,7 +34,7 @@ final class FilterDataProvider: NEFilterDataProvider {
     private var activeMatcher: DomainMatcher {
         let rules = FilterRules(vendorConfiguration: filterConfiguration.vendorConfiguration)
         if rules.domains.isEmpty { return DomainMatcher(domains: []) }
-        if tracker.unlockingGrant(rules: rules, verifier: verifier, now: Date(),
+        if tracker.unlockingGrant(rules: rules, verify: verifier.map { verifier in { verifier.verify($0) } }, now: Date(),
                                   uptime: ProcessInfo.processInfo.systemUptime) != nil {
             return DomainMatcher(domains: [])
         }
@@ -47,19 +47,26 @@ final class FilterDataProvider: NEFilterDataProvider {
     /// the site instead, so DNS itself is never filtered.
     static let dnsServiceIdentifier = "com.apple.mDNSResponder"
 
-    /// Signing identifier of the process that opened a flow, from its audit token.
-    static func signingIdentifier(of flow: NEFilterFlow) -> String? {
-        guard let token = flow.sourceAppAuditToken else { return nil }
+    /// Apple-signed mDNSResponder only: an app signed with the same identifier does not match.
+    private static let dnsServiceRequirement: SecRequirement? = {
+        var requirement: SecRequirement?
+        let text = "anchor apple and identifier \"\(dnsServiceIdentifier)\"" as CFString
+        return SecRequirementCreateWithString(text, [], &requirement) == errSecSuccess ? requirement : nil
+    }()
+
+    /// Whether the process that opened the flow is the system DNS service. Uses the *process*
+    /// audit token: for connections a system process makes on an app's behalf (as
+    /// mDNSResponder does for lookups), the app token belongs to the app.
+    static func isDNSService(_ flow: NEFilterFlow) -> Bool {
+        guard let requirement = dnsServiceRequirement,
+            let token = flow.sourceProcessAuditToken ?? flow.sourceAppAuditToken
+        else { return false }
         var code: SecCode?
         let attributes = [kSecGuestAttributeAudit: token] as CFDictionary
-        guard SecCodeCopyGuestWithAttributes(nil, attributes, [], &code) == errSecSuccess, let code else { return nil }
-        var staticCode: SecStaticCode?
-        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else { return nil }
-        var info: CFDictionary?
-        guard SecCodeCopySigningInformation(staticCode, [], &info) == errSecSuccess,
-            let dictionary = info as? [String: Any]
-        else { return nil }
-        return dictionary[kSecCodeInfoIdentifier as String] as? String
+        guard SecCodeCopyGuestWithAttributes(nil, attributes, [], &code) == errSecSuccess, let code else {
+            return false
+        }
+        return SecCodeCheckValidity(code, [], requirement) == errSecSuccess
     }
 
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
@@ -69,7 +76,7 @@ final class FilterDataProvider: NEFilterDataProvider {
         }
         for host in [socketFlow.remoteHostname, flow.url?.host].compactMap({ $0 }) where matcher.blocks(host: host) {
             // Looked up only for flows that would be blocked, to keep normal traffic cheap.
-            if Self.signingIdentifier(of: flow) == Self.dnsServiceIdentifier {
+            if Self.isDNSService(flow) {
                 return .allow()
             }
             logger.info("blocked \(host, privacy: .public)")

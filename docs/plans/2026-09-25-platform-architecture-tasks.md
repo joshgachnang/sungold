@@ -84,9 +84,10 @@ Order: **T1** first. Then **T2** and **T5** in parallel. T3 needs T2. T4 needs T
 
 ## T8 — Mac grant enforcement + relock
 
-- **Files:** `macos/Sungold/GrantVerifier.swift`, `macos/Sungold/EnforcementState.swift`, `macos/SungoldTests/GrantVerifierTests.swift`, `macos/SungoldTests/EnforcementStateTests.swift`.
-- **Do:** Verify grant signatures with the public key pinned in the build. The effective block list is the session's domains unless a valid, unexpired grant exists. Relock is scheduled at `expiresAt` using a monotonic-clock guard. Offline: keep the last known session and never unlock without a verified grant.
+- **Files:** `macos/Shared/GrantVerifier.swift` (Ed25519 verification, contract v1 checks, caching), `macos/Shared/FilterRules.swift` (rules passed to the filter, `UnlockTracker` with the uptime guard), `macos/SungoldFilter/FilterDataProvider.swift`, `macos/Sungold/{FilterController,SessionStore,SungoldApp}.swift`, `macos/SungoldTests/GrantTests.swift`, `macos/scripts/probe-grant.sh`.
+- **Design change from the original task:** enforcement lives in the **filter extension**, not the app (the plan named `macos/Sungold/GrantVerifier.swift` and `EnforcementState.swift`). The app passes the session's domains and signed grants to the filter; the sandboxed filter, which has no network access, verifies them against the pinned key and relocks on its own. Quitting the app mid-peek therefore cannot extend it. See decision record 0007.
+- **Do:** Verify grant signatures with the public key pinned in the build. The block is lifted only while a verified grant for the active session and user is unexpired, measured on the wall clock and on uptime since the filter first saw it. Offline: keep the last known rules and never unlock without a verified grant. Never drop flows from the Apple-signed system DNS service.
 - **Acceptance:** A8, A9.
-- **Verify:** Swift tests (valid, tampered, wrong key, expired, clock rollback, offline); `probe-block.sh` across a 5-minute peek with the backend running, and again with it stopped.
-- **Docs:** Enforcement and offline rules in the architecture doc.
+- **Verify:** Swift tests (valid Node-signed fixture, tampered, wrong key, expired, wrong version/scope, clock rollback, other session/user); `probe-grant.sh` (blocked → peek → app quit → relock at expiry) and `probe-block.sh`, both requiring "connection refused" for blocked sites so DNS failures cannot pass as blocks.
+- **Docs:** "Grant enforcement on the Mac" in the architecture doc; "Verify peeks" and "Updating the filter" in `run-the-mac-app.md`.
 - **Skills:** none in the repo.
