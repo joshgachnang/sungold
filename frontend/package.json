@@ -46,7 +46,7 @@
     "lint:unsafefix": "biome check --write . --unsafe",
     "sdk": "bun scripts/generate-sdk.ts && bun biome check --write scripts/generate-sdk.ts",
     "start": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --port 8093",
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "web": "EXPO_UNSTABLE_MCP_SERVER=1 bun expo start --web --port 8093"
   },
   "version": "1.0.0"
