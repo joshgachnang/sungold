@@ -21,3 +21,6 @@ frontend/playwright-report/
 
 # Expo local state
 frontend/.expo/devices.json
+
+# Claude Code session lock
+.claude/scheduled_tasks.lock
