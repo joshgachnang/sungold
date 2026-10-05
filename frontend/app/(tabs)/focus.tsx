@@ -21,6 +21,7 @@ import {
   useFocussessionsEndMutation,
   useFocussessionsGrantsMutation,
   usePostFocusSessionsMutation,
+  usePostParkingLotItemsMutation,
 } from "@/store/openApiSdk";
 
 interface FocusSession {
@@ -43,6 +44,15 @@ interface UnlockGrant {
   _id: string;
   sessionId: string;
   expiresAt: string;
+}
+
+interface ParkingLotItem {
+  _id: string;
+  sessionId: string;
+  text: string;
+  status: "open" | "done" | "dismissed";
+  created?: string;
+  deleted?: boolean;
 }
 
 const PEEK_MINUTES = 5;
@@ -75,7 +85,13 @@ const serverErrorMessage = (error: unknown): string | undefined => {
   const data = (
     error as {data?: {title?: string; meta?: {fields?: Record<string, string>}}} | undefined
   )?.data;
-  return data?.meta?.fields?.blockedDomains ?? data?.meta?.fields?.blocklistIds ?? data?.title;
+  return (
+    data?.meta?.fields?.blockedDomains ??
+    data?.meta?.fields?.blocklistIds ??
+    data?.meta?.fields?.text ??
+    data?.meta?.fields?.sessionId ??
+    data?.title
+  );
 };
 
 const BlocklistSelector: React.FC<{
@@ -208,8 +224,15 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
   const [endSession, {isLoading: isEnding, error: endError}] = useFocussessionsEndMutation();
   const [requestGrant, {isLoading: isRequesting, error: grantError}] =
     useFocussessionsGrantsMutation();
+  const [createParkingLotItem, {isLoading: isCapturingParkingLotItem}] =
+    usePostParkingLotItemsMutation();
+  const [parkingLotText, setParkingLotText] = useState<string>("");
+  const [parkingLotError, setParkingLotError] = useState<string | undefined>(undefined);
   const grants = useQuery<UnlockGrant>("unlockGrants", {
     filter: (grant) => grant.sessionId === session._id,
+  });
+  const parkingLotItems = useQuery<ParkingLotItem>("parkingLotItems", {
+    filter: (item) => !item.deleted && item.status === "open",
   });
 
   const activeGrant = useMemo(
@@ -254,6 +277,31 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
     await endSession(session._id);
   }, [endSession, session._id]);
 
+  const handleCaptureParkingLotItem = useCallback(async (): Promise<void> => {
+    const text = parkingLotText.trim();
+    if (!text) {
+      setParkingLotError("Add a thought before parking it.");
+      return;
+    }
+    setParkingLotError(undefined);
+    const result = await createParkingLotItem({
+      sessionId: session._id,
+      text,
+    } as Parameters<typeof createParkingLotItem>[0] & {text: string});
+    if ("error" in result && result.error) {
+      setParkingLotError(
+        serverErrorMessage(result.error) ?? "Could not park that thought. Try again."
+      );
+      return;
+    }
+    setParkingLotText("");
+  }, [createParkingLotItem, parkingLotText, session._id]);
+
+  const sortedParkingLotItems = useMemo(
+    () => [...parkingLotItems].sort((a, b) => (a.created ?? "").localeCompare(b.created ?? "")),
+    [parkingLotItems]
+  );
+
   return (
     <Card>
       <Box gap={3} testID="focus-active-session">
@@ -297,6 +345,43 @@ const ActiveSession: React.FC<{session: FocusSession}> = ({session}) => {
             <Text color="error">Could not end the session. Try again.</Text>
           </Box>
         ) : null}
+        <Box gap={2} testID="focus-parking-lot">
+          <Heading color="primary" size="sm">
+            Parking lot
+          </Heading>
+          <TextArea
+            errorText={parkingLotError}
+            helperText="Capture thoughts to revisit when the block ends."
+            onChange={setParkingLotText}
+            testIDs={{
+              error: "focus-parking-lot-error",
+              input: "focus-parking-lot-input",
+            }}
+            title="Thought"
+            value={parkingLotText}
+          />
+          <Button
+            disabled={isCapturingParkingLotItem}
+            loading={isCapturingParkingLotItem}
+            onClick={handleCaptureParkingLotItem}
+            testID="focus-parking-lot-add-button"
+            text="Park thought"
+            variant="secondary"
+          />
+          {sortedParkingLotItems.length === 0 ? (
+            <Box testID="focus-parking-lot-empty">
+              <Text color="secondaryDark">No parked thoughts yet.</Text>
+            </Box>
+          ) : (
+            <Box gap={2} testID="focus-parking-lot-list">
+              {sortedParkingLotItems.map((item) => (
+                <Box key={item._id} testID={`focus-parking-lot-item-${item._id}`}>
+                  <Text skipLinking>{item.text}</Text>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
         <Button
           loading={isEnding}
           onClick={handleEnd}

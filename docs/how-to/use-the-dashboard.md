@@ -5,7 +5,7 @@ Open the web app after signing in to use the dashboard screens.
 | Area | What it does |
 | --- | --- |
 | Today | Shows the day view. The active-session summary and weekly focus comparison arrive in later dashboard slices. |
-| Focus | Starts and manages a focus session from saved blocklists and one-off domains. |
+| Focus | Starts and manages a focus session from saved blocklists and one-off domains, with a parking lot for stray thoughts. |
 | History | Shows weekly focus-hour bars and a table of past focus sessions. |
 | Blocklists | Creates, edits and deletes saved sets of distracting domains. |
 | Devices | Lists signed-in devices. Revoke controls arrive in a later slice. |
@@ -45,3 +45,11 @@ These saved settings are the dashboard source for week boundaries, so the weekly
 3. Review past sessions in the table.
 
 Focus hours count session time from start to end, or to now for an active session, minus any timed peeks from unlock grants. The session table shows the date, duration, intention, blocked domains, peek count, and review status for each past session.
+
+## Capture Stray Thoughts
+
+1. Open **Focus** while a session is active.
+2. Enter the thought in **Parking lot**.
+3. Select **Park thought**.
+
+Open parked thoughts remain visible on Focus across reloads and later active sessions until the review workflow resolves them.

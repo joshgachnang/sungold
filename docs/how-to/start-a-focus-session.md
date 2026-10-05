@@ -11,6 +11,13 @@ The session stores a copy of the selected blocklists' domains plus the extra dom
 
 While a session is active, the Focus tab shows your intention and the blocked domains, and every signed-in device enforces the block.
 
+## Park a thought
+
+1. During an active session, enter the thought in **Parking lot**.
+2. Select **Park thought**.
+
+The item appears in the parking-lot list after it syncs. Open items stay visible during later active sessions until the review flow marks them done or dismissed.
+
 ## Peek
 
 Select **Peek 5 min** to unblock the session's domains for five minutes on every device. A countdown shows the time left. When it reaches zero, devices block again on their own, even offline.

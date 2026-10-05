@@ -42,6 +42,7 @@ Sungold is a deep-work app: focus sessions that block distracting sites and apps
 | --- | --- | --- | --- |
 | `Blocklist` | user | yes, owner stream | Saved sets of distracting domains used to start focus sessions |
 | `FocusSession` | user | yes, owner stream | An active or ended block: domains, intention, timing |
+| `ParkingLotItem` | user | yes, owner stream | Stray thoughts captured during an active focus session |
 | `UnlockGrant` | user | yes, owner stream | A signed, expiring permission to lift a session's block |
 | `User` profile settings | user | no | Week start day and timezone used for dashboard week boundaries |
 
@@ -96,6 +97,21 @@ The web dashboard computes focus hours on the client from synced `FocusSession` 
 
 Weekly buckets use the signed-in user's saved `weekStartDay` and `timezone`. History shows the current week plus the previous seven weeks from those boundaries, so two devices render the same weekly totals after profile defaults have been saved.
 
+### `ParkingLotItem`
+
+Route: `/parkingLotItems` (`backend/src/api/parkingLotItems.ts`). Sync stream: `parkingLotItems|owner:{ownerId}`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | string | String so offline sync clients can mint ids |
+| `ownerId` | ObjectId | Set from the caller; clients cannot set it |
+| `sessionId` | string | Focus session where the item was captured |
+| `text` | string | Captured thought, 1-280 characters |
+| `status` | `open` \| `done` \| `dismissed` | Open items stay visible; T7 review resolves them |
+| `resolvedAt` | Date | Set when an item is marked done or dismissed |
+
+Owners can create an item only for their own active session. The Focus screen reads open items through sync, so items captured earlier and still open appear during the current active session too. Resolution is owner-only and sets `resolvedAt`; review workflows use that in a later slice.
+
 ### `UnlockGrant`
 
 Route: `/unlockGrants` (`backend/src/api/unlockGrants.ts`), read-only for the owner. Sync stream: `unlockGrants|owner:{ownerId}`. Grants are created only by `POST /focusSessions/:id/grants`; they cannot be created, edited or deleted directly, over REST or sync.
@@ -146,9 +162,9 @@ The backend signs with `GRANT_SIGNING_PRIVATE_KEY` (PKCS8 DER, base64url). `bun 
 
 ## Web and iOS data path
 
-The Expo app **reads** sessions, grants and blocklists through syncdb (`focusSessions`, `unlockGrants` and `blocklists` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end`, `POST /focusSessions/:id/grants` and `POST /blocklists/starter`, using the generated hooks.
+The Expo app **reads** sessions, grants, blocklists and parking-lot items through syncdb (`focusSessions`, `unlockGrants`, `blocklists` and `parkingLotItems` in `frontend/store/syncdb.ts`), so changes from any device appear live. It **writes** through REST: `POST /focusSessions`, `POST /focusSessions/:id/end`, `POST /focusSessions/:id/grants`, `POST /blocklists/starter` and `POST /parkingLotItems`, using the generated hooks.
 
-Every write here is a server decision (domain normalization, one active session, ending, signing a grant). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
+Every write here is a server decision (domain normalization, one active session, ending, signing a grant, active-session ownership for parking-lot capture). With syncdb 57.6.1, a session created locally over sync keeps the client's values even after the server normalizes them, so local syncdb writes are not used for these collections. Screens show a loading state until the sync client has started **and** finished its first pull (`start()` resolves before that pull completes), so an existing session is never shown as "no session" on a device's first load.
 
 ## Mac data path
 

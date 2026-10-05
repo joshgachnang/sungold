@@ -4,6 +4,7 @@ export const addTagTypes = [
   "users",
   "blocklists",
   "focussessions",
+  "parkinglotitems",
   "unlockgrants",
   "devicesessions",
   "admin",
@@ -187,6 +188,24 @@ const injectedRtkApi = api
         providesTags: ["organizations"],
         query: () => ({url: `/orgs/mine`}),
       }),
+      getParkingLotItems: build.query<GetParkingLotItemsRes, GetParkingLotItemsArgs>({
+        providesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          params: {
+            _id: queryArg._id,
+            limit: queryArg.limit,
+            page: queryArg.page,
+            sessionId: queryArg.sessionId,
+            sort: queryArg.sort,
+            status: queryArg.status,
+          },
+          url: `/parkingLotItems/`,
+        }),
+      }),
+      getParkingLotItemsById: build.query<GetParkingLotItemsByIdRes, GetParkingLotItemsByIdArgs>({
+        providesTags: ["parkinglotitems"],
+        query: (queryArg) => ({url: `/parkingLotItems/${queryArg}`}),
+      }),
       getUnlockGrants: build.query<GetUnlockGrantsRes, GetUnlockGrantsArgs>({
         providesTags: ["unlockgrants"],
         query: (queryArg) => ({
@@ -267,6 +286,17 @@ const injectedRtkApi = api
           url: `/orgs/${queryArg.id}/members/${queryArg.memberId}`,
         }),
       }),
+      patchParkingLotItemsById: build.mutation<
+        PatchParkingLotItemsByIdRes,
+        PatchParkingLotItemsByIdArgs
+      >({
+        invalidatesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          body: queryArg.body,
+          method: "PATCH",
+          url: `/parkingLotItems/${queryArg.id}`,
+        }),
+      }),
       patchUsersById: build.mutation<PatchUsersByIdRes, PatchUsersByIdArgs>({
         invalidatesTags: ["users"],
         query: (queryArg) => ({
@@ -335,6 +365,14 @@ const injectedRtkApi = api
           body: queryArg.body,
           method: "POST",
           url: `/orgs/${queryArg.id}/members`,
+        }),
+      }),
+      postParkingLotItems: build.mutation<PostParkingLotItemsRes, PostParkingLotItemsArgs>({
+        invalidatesTags: ["parkinglotitems"],
+        query: (queryArg) => ({
+          body: queryArg,
+          method: "POST",
+          url: `/parkingLotItems/`,
         }),
       }),
       postUsers: build.mutation<PostUsersRes, PostUsersArgs>({
@@ -934,6 +972,178 @@ export type PatchFocusSessionsByIdArgs = {
     _syncSeq?: number;
   };
 };
+export type PostParkingLotItemsRes = /** status 201 Successful create */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PostParkingLotItemsArgs = {
+  /** The document id (String so it can be synced) */
+  _id?: string;
+  /** The user who owns this parking lot item */
+  ownerId?: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId?: string;
+  /** Whether the item is still open or was resolved during review */
+  status?: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text?: string;
+  /** When this document was last updated */
+  updated?: string;
+  /** When this document was created */
+  created?: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetParkingLotItemsRes = /** status 200 Successful list */ {
+  data?: {
+    /** The document id (String so it can be synced) */
+    _id: string;
+    /** The user who owns this parking lot item */
+    ownerId: string;
+    /** When the item was resolved; unset while open */
+    resolvedAt?: string;
+    /** The focus session where the item was captured */
+    sessionId: string;
+    /** Whether the item is still open or was resolved during review */
+    status: "open" | "done" | "dismissed";
+    /** The stray thought captured during focus */
+    text: string;
+    /** When this document was last updated */
+    updated: string;
+    /** When this document was created */
+    created: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  }[];
+  limit?: number;
+  more?: boolean;
+  page?: number;
+  total?: number;
+};
+export type GetParkingLotItemsArgs = {
+  _id?: {
+    $in?: string[];
+  };
+  sessionId?:
+    | string
+    | {
+        $in?: string[];
+      };
+  status?:
+    | ("open" | "done" | "dismissed")
+    | {
+        $in?: string[];
+      };
+  page?: number;
+  sort?: string;
+  limit?: number;
+};
+export type GetParkingLotItemsByIdRes = /** status 200 Successful read */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type GetParkingLotItemsByIdArgs = string;
+export type PatchParkingLotItemsByIdRes = /** status 200 Successful update */ {
+  /** The document id (String so it can be synced) */
+  _id: string;
+  /** The user who owns this parking lot item */
+  ownerId: string;
+  /** When the item was resolved; unset while open */
+  resolvedAt?: string;
+  /** The focus session where the item was captured */
+  sessionId: string;
+  /** Whether the item is still open or was resolved during review */
+  status: "open" | "done" | "dismissed";
+  /** The stray thought captured during focus */
+  text: string;
+  /** When this document was last updated */
+  updated: string;
+  /** When this document was created */
+  created: string;
+  /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+  deleted?: boolean;
+  /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+  _syncPrevStream?: string;
+  /** Monotonic per-stream sequence stamped on every synced write */
+  _syncSeq?: number;
+};
+export type PatchParkingLotItemsByIdArgs = {
+  id: string;
+  body: {
+    /** The document id (String so it can be synced) */
+    _id?: string;
+    /** The user who owns this parking lot item */
+    ownerId?: string;
+    /** When the item was resolved; unset while open */
+    resolvedAt?: string;
+    /** The focus session where the item was captured */
+    sessionId?: string;
+    /** Whether the item is still open or was resolved during review */
+    status?: "open" | "done" | "dismissed";
+    /** The stray thought captured during focus */
+    text?: string;
+    /** When this document was last updated */
+    updated?: string;
+    /** When this document was created */
+    created?: string;
+    /** Deleted objects are not returned in any find() or findOne() by default. Add {deleted: true} to find them. */
+    deleted?: boolean;
+    /** The document's previous sync stream, set when a write moved it between scopes; null when the last write did not move it */
+    _syncPrevStream?: string;
+    /** Monotonic per-stream sequence stamped on every synced write */
+    _syncSeq?: number;
+  };
+};
 export type UnlockgrantsPublicKeyRes = /** status 200 Successful response */ {
   data?: object;
 };
@@ -1449,6 +1659,10 @@ export const {
   useGetFocusSessionsQuery,
   useGetFocusSessionsByIdQuery,
   usePatchFocusSessionsByIdMutation,
+  usePostParkingLotItemsMutation,
+  useGetParkingLotItemsQuery,
+  useGetParkingLotItemsByIdQuery,
+  usePatchParkingLotItemsByIdMutation,
   useUnlockgrantsPublicKeyQuery,
   useGetUnlockGrantsQuery,
   useGetUnlockGrantsByIdQuery,
