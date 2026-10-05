@@ -30,26 +30,29 @@ const issueDeviceSession = async (
   };
 };
 
+// A name no real device uses, so cleanup never revokes a real Mac on the shared e2e account.
+const TEST_DEVICE_NAME = "Sungold e2e devices test";
+
 test.describe("Devices", () => {
   test.beforeEach(async ({page, request}) => {
-    await revokeDeviceSessions(request);
+    await revokeDeviceSessions(request, TEST_DEVICE_NAME);
     await loginAs(page);
     await page.goto("/devices");
     await page.getByTestId("devices-screen").waitFor({state: "visible"});
   });
 
   test.afterEach(async ({request}) => {
-    await revokeDeviceSessions(request);
+    await revokeDeviceSessions(request, TEST_DEVICE_NAME);
   });
 
   test("user can revoke a signed-in device", async ({page, request}) => {
-    const device = await issueDeviceSession(request, "Studio MacBook");
+    const device = await issueDeviceSession(request, TEST_DEVICE_NAME);
     await page.reload();
     await page.getByTestId("devices-screen").waitFor({state: "visible"});
 
     const row = page.getByTestId(`devices-item-${device._id}`);
     await row.waitFor({state: "visible"});
-    await expect(row.getByTestId(`devices-item-name-${device._id}`)).toContainText("Studio MacBook");
+    await expect(row.getByTestId(`devices-item-name-${device._id}`)).toContainText(TEST_DEVICE_NAME);
     await expect(row.getByTestId(`devices-item-client-${device._id}`)).toContainText("Mac");
     await expect(row.getByTestId(`devices-item-status-${device._id}`)).toContainText("Signed in");
     await expect(row.getByTestId(`devices-item-created-${device._id}`)).toContainText("Signed in");
