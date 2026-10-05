@@ -65,11 +65,16 @@ final class UnlockTracker {
 
     func unlockingGrant(rules: FilterRules, verifier: GrantVerifier?, now: Date,
                         uptime: TimeInterval) -> GrantPayload? {
-        guard let verifier, let sessionId = rules.sessionId, let userId = rules.userId else { return nil }
+        unlockingGrant(rules: rules, verify: verifier.map { verifier in { verifier.verify($0) } }, now: now, uptime: uptime)
+    }
+
+    func unlockingGrant(rules: FilterRules, verify: ((SignedGrant) -> GrantPayload?)?, now: Date,
+                        uptime: TimeInterval) -> GrantPayload? {
+        guard let verify, let sessionId = rules.sessionId, let userId = rules.userId else { return nil }
         lock.lock()
         defer { lock.unlock() }
         for grant in rules.grants {
-            guard let payload = verifier.verify(grant),
+            guard let payload = verify(grant),
                 payload.sessionId == sessionId, payload.userId == userId,
                 now < payload.expiresAt,
                 now >= payload.issuedAt.addingTimeInterval(-Self.allowedSkew)

@@ -53,6 +53,8 @@ final class GrantVerifierTests: XCTestCase {
                                    "issuedAt": "2026-10-04T12:00:00.000Z", "expiresAt": "2026-10-04T12:05:00.000Z"]
         XCTAssertNotNil(ownVerifier.verify(try sign(base, with: key)))
         XCTAssertNil(ownVerifier.verify(try sign(base.merging(["v": 2]) { $1 }, with: key)))
+        XCTAssertNil(ownVerifier.verify(try sign(base.merging(["v": true]) { $1 }, with: key)))
+        XCTAssertNil(ownVerifier.verify(try sign(base.merging(["v": 1.5]) { $1 }, with: key)))
         XCTAssertNil(ownVerifier.verify(try sign(base.merging(["scope": "domains"]) { $1 }, with: key)))
         XCTAssertNil(ownVerifier.verify(try sign(base.merging(["expiresAt": "2026-10-04T11:00:00.000Z"]) { $1 }, with: key)))
         XCTAssertNil(ownVerifier.verify(SignedGrant(payload: "not base64!", signature: "x")))
@@ -131,5 +133,24 @@ final class FilterRulesFromStateTests: XCTestCase {
         state.apply(try sessionDelta("s1", status: "ended", seq: 2))
         XCTAssertEqual(SessionStore.filterRules(state: state, user: user), .none)
         XCTAssertEqual(SessionStore.filterRules(state: state, user: nil), .none)
+    }
+}
+
+final class CachingGrantVerifierTests: XCTestCase {
+    func testReturnsTheSameResultAsTheVerifier() {
+        let verifier = GrantVerifier(publicKeyBase64URL: NodeFixture.publicKey)!
+        let caching = CachingGrantVerifier(verifier)
+        XCTAssertEqual(caching.verify(NodeFixture.grant), verifier.verify(NodeFixture.grant))
+        XCTAssertEqual(caching.verify(NodeFixture.grant)?.grantId, "g-fixture")
+        let bad = SignedGrant(payload: NodeFixture.grant.payload, signature: "AAAA")
+        XCTAssertNil(caching.verify(bad))
+        XCTAssertNil(caching.verify(bad))
+    }
+
+    func testAFreshTrackerRejectsAnAlreadyExpiredGrant() {
+        let verifier = GrantVerifier(publicKeyBase64URL: NodeFixture.publicKey)!
+        let rules = FilterRules(domains: ["x.com"], sessionId: "s-fixture", userId: "u-fixture", grants: [NodeFixture.grant])
+        XCTAssertNil(UnlockTracker().unlockingGrant(rules: rules, verifier: verifier,
+                                                    now: NodeFixture.expiresAt.addingTimeInterval(1), uptime: 0))
     }
 }

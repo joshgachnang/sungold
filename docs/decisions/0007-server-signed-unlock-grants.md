@@ -18,3 +18,4 @@ Unlocks (NFC tap, timed peek, cooldown, emergency escape) must not be bypassable
 - The grant payload is a versioned contract shared by backend, Mac and iOS; its fields are documented in [architecture](../explanation/architecture.md#unlock-grants).
 - The backend needs a signing key (`GRANT_SIGNING_PRIVATE_KEY`) managed as a secret.
 - Grants sync to the owner's devices like any other owner-scoped collection.
+- On the Mac the **filter extension** verifies grants and relocks, not the app (decided while building it, 2026-10-04): the app passes the session's domains and signed grants to the filter, so quitting the app or going offline cannot extend a peek.

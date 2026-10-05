@@ -58,8 +58,8 @@ session_id=$(curl -s -X POST "${auth[@]}" "$API/focusSessions" \
   -d "{\"blockedDomains\":[\"$BLOCKED\"],\"intention\":\"block probe\"}" | json "['data']['_id']")
 echo "$(stamp) started session $session_id blocking $BLOCKED"
 wait_filter "$BLOCKED"
-expect "$BLOCKED" blocked
-expect "www.$BLOCKED" blocked
+expect "$BLOCKED" "blocked (curl exit 7)"
+expect "www.$BLOCKED" "blocked (curl exit 7)"
 expect "$ALLOWED" reachable
 
 curl -s -o /dev/null -X POST "${auth[@]}" "$API/focusSessions/$session_id/end"
