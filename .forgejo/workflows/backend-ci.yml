@@ -24,11 +24,12 @@ jobs:
         with:
           path: |
             ~/.bun/install/cache
-            node_modules
-          key: bun-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('bun.lock', 'package.json') }}
+            backend/node_modules
+          # Per job and from backend/'s own lockfile: the old key hashed root files that don't
+          # exist, so both jobs shared one key and the backend restored the frontend's cache.
+          key: bun-backend-${{ runner.os }}-${{ hashFiles('backend/bun.lock', 'backend/package.json') }}
           restore-keys: |
-            bun-${{ runner.os }}-${{ github.ref }}-
-            bun-${{ runner.os }}-
+            bun-backend-${{ runner.os }}-
 
       # factions jobs have no Docker socket; the job image ships mongod 7.0.
       - name: Start MongoDB

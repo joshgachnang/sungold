@@ -24,11 +24,12 @@ jobs:
         with:
           path: |
             ~/.bun/install/cache
-            node_modules
-          key: bun-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('bun.lock', 'package.json') }}
+            frontend/node_modules
+          # Per job and from frontend/'s own lockfile: the old key hashed root files that don't
+          # exist, so both jobs shared one key and the backend restored the frontend's cache.
+          key: bun-frontend-${{ runner.os }}-${{ hashFiles('frontend/bun.lock', 'frontend/package.json') }}
           restore-keys: |
-            bun-${{ runner.os }}-${{ github.ref }}-
-            bun-${{ runner.os }}-
+            bun-frontend-${{ runner.os }}-
 
       - name: Install dependencies
         run: bun install
