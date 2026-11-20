@@ -1,9 +1,9 @@
 import {beforeAll, describe, it} from "bun:test";
 import {configureOpenApiValidator, generateTokens, SyncApp, TerrenoApp} from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
 import {FocusSession} from "../models/focusSession";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import type {UserDocument} from "../types/models/userTypes";
 import {focusSessionRouter} from "./focusSessions";
 import {parkingLotItemRouter} from "./parkingLotItems";
@@ -43,7 +43,7 @@ describe("parking lot items", () => {
     const auth = await authHeader(user);
     const sessionId = await startSession(user._id);
 
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId, text: "Check whether the draft email sent"});
@@ -64,25 +64,25 @@ describe("parking lot items", () => {
     const endedSessionId = await startSession(user._id);
     await FocusSession.updateOne({_id: endedSessionId}, {endedAt: new Date(), status: "ended"});
 
-    const emptyText = await supertest(app)
+    const emptyText = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: endedSessionId, text: ""});
     assert.equal(emptyText.status, 400);
 
-    const longText = await supertest(app)
+    const longText = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: endedSessionId, text: "x".repeat(281)});
     assert.equal(longText.status, 400);
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: otherSessionId, text: "This should not attach"});
     assert.equal(foreign.status, 400);
 
-    const ended = await supertest(app)
+    const ended = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: endedSessionId, text: "Too late"});
@@ -95,20 +95,20 @@ describe("parking lot items", () => {
     const auth = await authHeader(user);
     const otherAuth = await authHeader(other);
     const earlierSessionId = await startSession(user._id);
-    const earlier = await supertest(app)
+    const earlier = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: earlierSessionId, text: "Earlier carry-forward"});
     assert.equal(earlier.status, 201, JSON.stringify(earlier.body));
     await FocusSession.updateOne({_id: earlierSessionId}, {endedAt: new Date(), status: "ended"});
     const currentSessionId = await startSession(user._id);
-    const current = await supertest(app)
+    const current = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", auth)
       .send({sessionId: currentSessionId, text: "Current item"});
     assert.equal(current.status, 201, JSON.stringify(current.body));
 
-    const resolved = await supertest(app)
+    const resolved = await request(app)
       .patch(`/parkingLotItems/${earlier.body.data._id}`)
       .set("Authorization", auth)
       .send({status: "dismissed"});
@@ -116,16 +116,14 @@ describe("parking lot items", () => {
     assert.equal(resolved.body.data.status, "dismissed");
     assert.isString(resolved.body.data.resolvedAt);
 
-    const list = await supertest(app)
-      .get("/parkingLotItems?status=open")
-      .set("Authorization", auth);
+    const list = await request(app).get("/parkingLotItems?status=open").set("Authorization", auth);
     assert.equal(list.status, 200, JSON.stringify(list.body));
     assert.sameMembers(
       list.body.data.map((item: {text: string}) => item.text),
       ["Current item"]
     );
 
-    const foreignList = await supertest(app)
+    const foreignList = await request(app)
       .get("/parkingLotItems?status=open")
       .set("Authorization", otherAuth);
     assert.equal(foreignList.status, 200, JSON.stringify(foreignList.body));
@@ -137,21 +135,21 @@ describe("parking lot items", () => {
     const ownerAuth = await authHeader(owner);
     const otherAuth = await authHeader(await createUser("parking-stream-other"));
     const sessionId = await startSession(owner._id);
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/parkingLotItems")
       .set("Authorization", ownerAuth)
       .send({sessionId, text: "Synced thought"});
     assert.equal(created.status, 201, JSON.stringify(created.body));
 
     const stream = `parkingLotItems|owner:${String(owner._id)}`;
-    const snapshot = await supertest(app)
+    const snapshot = await request(app)
       .get("/sync/snapshot")
       .query({collection: "parkingLotItems", stream})
       .set("Authorization", ownerAuth);
     assert.equal(snapshot.status, 200, JSON.stringify(snapshot.body));
     assert.include(JSON.stringify(snapshot.body), created.body.data._id);
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .get("/sync/snapshot")
       .query({collection: "parkingLotItems", stream})
       .set("Authorization", otherAuth);

@@ -9,8 +9,9 @@ import {
   type UserModel as TerrenoAuthUserModel,
 } from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
+import type supertest from "supertest";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import {buildBetterAuthConfig} from "../utils/betterAuthConfig";
 import {configureDeviceAuth, deviceSessionRouter} from "./deviceSessions";
 import {focusSessionRouter} from "./focusSessions";
@@ -45,7 +46,7 @@ describe("device sessions", () => {
   // Signs up through Better Auth like the web app does and returns the web session's bearer.
   const signUp = async (label: string): Promise<{email: string; authorization: string}> => {
     const email = `${label}-${crypto.randomUUID()}@example.com`;
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/api/auth/sign-up/email")
       .set("Origin", WEB_ORIGIN)
       .send({email, name: label, password: "password12345"});
@@ -59,7 +60,7 @@ describe("device sessions", () => {
     authorization: string,
     body: Record<string, unknown>
   ): Promise<supertest.Response> =>
-    supertest(app)
+    request(app)
       .post("/deviceSessions/issue")
       .set("Authorization", authorization)
       .send({
@@ -88,11 +89,11 @@ describe("device sessions", () => {
     assert.isAbove(deviceToken.length, 10);
     assert.notEqual(`Bearer ${deviceToken}`, authorization);
 
-    const me = await supertest(app).get("/auth/me").set("Authorization", `Bearer ${deviceToken}`);
+    const me = await request(app).get("/auth/me").set("Authorization", `Bearer ${deviceToken}`);
     assert.equal(me.status, 200, JSON.stringify(me.body));
     assert.equal(me.body.data.email, email);
 
-    const session = await supertest(app)
+    const session = await request(app)
       .post("/focusSessions")
       .set("Authorization", `Bearer ${deviceToken}`)
       .send({blockedDomains: ["x.com"]});
@@ -103,19 +104,19 @@ describe("device sessions", () => {
     const {authorization} = await signUp("mac-sync");
     const issued = await issue(authorization, {});
     const deviceToken = tokenFrom(issued.body.data.redirectUrl);
-    const me = await supertest(app).get("/auth/me").set("Authorization", authorization);
+    const me = await request(app).get("/auth/me").set("Authorization", authorization);
     const stream = `focusSessions|owner:${me.body.data._id}`;
 
-    const snapshot = await supertest(app)
+    const snapshot = await request(app)
       .get("/sync/snapshot")
       .query({collection: "focusSessions", stream})
       .set("Authorization", `Bearer ${deviceToken}`);
     assert.equal(snapshot.status, 200, JSON.stringify(snapshot.body));
 
-    await supertest(app)
+    await request(app)
       .post(`/deviceSessions/${issued.body.data.deviceSession._id}/revoke`)
       .set("Authorization", authorization);
-    const afterRevoke = await supertest(app)
+    const afterRevoke = await request(app)
       .get("/sync/snapshot")
       .query({collection: "focusSessions", stream})
       .set("Authorization", `Bearer ${deviceToken}`);
@@ -150,7 +151,7 @@ describe("device sessions", () => {
       const res = await issue(authorization, {state});
       assert.equal(res.status, 400, `state=${JSON.stringify(state)}`);
     }
-    const missing = await supertest(app)
+    const missing = await request(app)
       .post("/deviceSessions/issue")
       .set("Authorization", authorization)
       .send({client: "mac", redirect: MAC_REDIRECT});
@@ -158,7 +159,7 @@ describe("device sessions", () => {
   });
 
   it("requires sign-in to issue a device token", async () => {
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/deviceSessions/issue")
       .send({client: "mac", redirect: MAC_REDIRECT, state: "abc"});
     assert.oneOf(res.status, [401, 403, 405]);
@@ -171,7 +172,7 @@ describe("device sessions", () => {
     const deviceToken = tokenFrom(issued.body.data.redirectUrl);
     const deviceId = issued.body.data.deviceSession._id as string;
 
-    const list = await supertest(app)
+    const list = await request(app)
       .get("/deviceSessions")
       .set("Authorization", owner.authorization);
     assert.equal(list.status, 200);
@@ -180,32 +181,30 @@ describe("device sessions", () => {
     assert.equal(list.body.data[0].name, "Josh's MacBook");
     assert.notInclude(JSON.stringify(list.body), deviceToken);
 
-    const otherList = await supertest(app)
+    const otherList = await request(app)
       .get("/deviceSessions")
       .set("Authorization", other.authorization);
     assert.lengthOf(otherList.body.data, 0);
 
-    const foreignRevoke = await supertest(app)
+    const foreignRevoke = await request(app)
       .post(`/deviceSessions/${deviceId}/revoke`)
       .set("Authorization", other.authorization);
     assert.oneOf(foreignRevoke.status, [403, 404]);
-    const stillWorks = await supertest(app)
+    const stillWorks = await request(app)
       .get("/auth/me")
       .set("Authorization", `Bearer ${deviceToken}`);
     assert.equal(stillWorks.status, 200);
 
-    const revoked = await supertest(app)
+    const revoked = await request(app)
       .post(`/deviceSessions/${deviceId}/revoke`)
       .set("Authorization", owner.authorization);
     assert.equal(revoked.status, 200, JSON.stringify(revoked.body));
     assert.isString(revoked.body.data.revokedAt);
 
-    const after = await supertest(app)
-      .get("/auth/me")
-      .set("Authorization", `Bearer ${deviceToken}`);
+    const after = await request(app).get("/auth/me").set("Authorization", `Bearer ${deviceToken}`);
     assert.oneOf(after.status, [401, 403]);
 
-    const webStillWorks = await supertest(app)
+    const webStillWorks = await request(app)
       .get("/auth/me")
       .set("Authorization", owner.authorization);
     assert.equal(webStillWorks.status, 200);
@@ -216,17 +215,17 @@ describe("device sessions", () => {
     const issued = await issue(authorization, {});
     const deviceId = issued.body.data.deviceSession._id as string;
 
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/deviceSessions")
       .set("Authorization", authorization)
       .send({client: "mac", name: "forged"});
     assert.oneOf(created.status, [403, 405]);
-    const patched = await supertest(app)
+    const patched = await request(app)
       .patch(`/deviceSessions/${deviceId}`)
       .set("Authorization", authorization)
       .send({revokedAt: null});
     assert.oneOf(patched.status, [403, 405]);
-    const deleted = await supertest(app)
+    const deleted = await request(app)
       .delete(`/deviceSessions/${deviceId}`)
       .set("Authorization", authorization);
     assert.oneOf(deleted.status, [403, 405]);

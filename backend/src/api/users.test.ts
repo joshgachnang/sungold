@@ -8,8 +8,8 @@ import {
   type UserModel as TerrenoAuthUserModel,
 } from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import {buildBetterAuthConfig} from "../utils/betterAuthConfig";
 
 const WEB_ORIGIN = "http://localhost:8093";
@@ -35,7 +35,7 @@ describe("profile settings", () => {
 
   const signUp = async (label: string): Promise<string> => {
     const email = `${label}-${crypto.randomUUID()}@example.com`;
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/api/auth/sign-up/email")
       .set("Origin", WEB_ORIGIN)
       .send({email, name: label, password: "password12345"});
@@ -48,7 +48,7 @@ describe("profile settings", () => {
   it("lets users save week start day and timezone on their profile", async () => {
     const authorization = await signUp("profile-settings");
 
-    const patched = await supertest(app)
+    const patched = await request(app)
       .patch("/auth/me")
       .set("Authorization", authorization)
       .send({timezone: "America/Los_Angeles", weekStartDay: 1});
@@ -57,7 +57,7 @@ describe("profile settings", () => {
     assert.equal(patched.body.data.timezone, "America/Los_Angeles");
     assert.equal(patched.body.data.weekStartDay, 1);
 
-    const me = await supertest(app).get("/auth/me").set("Authorization", authorization);
+    const me = await request(app).get("/auth/me").set("Authorization", authorization);
     assert.equal(me.status, 200, JSON.stringify(me.body));
     assert.equal(me.body.data.timezone, "America/Los_Angeles");
     assert.equal(me.body.data.weekStartDay, 1);
@@ -66,13 +66,13 @@ describe("profile settings", () => {
   it("rejects invalid profile calendar settings", async () => {
     const authorization = await signUp("profile-invalid-settings");
 
-    const badWeekStart = await supertest(app)
+    const badWeekStart = await request(app)
       .patch("/auth/me")
       .set("Authorization", authorization)
       .send({timezone: "America/New_York", weekStartDay: 7});
     assert.equal(badWeekStart.status, 403, JSON.stringify(badWeekStart.body));
 
-    const badTimezone = await supertest(app)
+    const badTimezone = await request(app)
       .patch("/auth/me")
       .set("Authorization", authorization)
       .send({timezone: "Not/AZone", weekStartDay: 1});
