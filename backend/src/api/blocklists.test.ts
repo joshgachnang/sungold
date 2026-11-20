@@ -1,8 +1,8 @@
 import {beforeAll, describe, it} from "bun:test";
 import {configureOpenApiValidator, generateTokens, SyncApp, TerrenoApp} from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import type {UserDocument} from "../types/models/userTypes";
 import {blocklistRouter} from "./blocklists";
 
@@ -32,7 +32,7 @@ describe("blocklists", () => {
 
   it("creates an owner blocklist with normalized domains", async () => {
     const user = await createUser("blocklist-owner");
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/blocklists")
       .set("Authorization", await authHeader(user))
       .send({
@@ -52,25 +52,25 @@ describe("blocklists", () => {
   it("rejects empty names, empty domains, invalid domains, and too many domains", async () => {
     const auth = await authHeader(await createUser("blocklist-invalid"));
 
-    const emptyName = await supertest(app)
+    const emptyName = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: ["x.com"], name: ""});
     assert.equal(emptyName.status, 400);
 
-    const emptyDomains = await supertest(app)
+    const emptyDomains = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: [], name: "Empty"});
     assert.equal(emptyDomains.status, 400);
 
-    const invalidDomain = await supertest(app)
+    const invalidDomain = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: ["not a domain"], name: "Bad"});
     assert.equal(invalidDomain.status, 400);
 
-    const tooMany = await supertest(app)
+    const tooMany = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({
@@ -83,14 +83,14 @@ describe("blocklists", () => {
   it("lets owners update and delete only their own blocklists", async () => {
     const ownerAuth = await authHeader(await createUser("blocklist-edit-owner"));
     const otherAuth = await authHeader(await createUser("blocklist-edit-other"));
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/blocklists")
       .set("Authorization", ownerAuth)
       .send({domains: ["x.com"], name: "Social"});
     assert.equal(created.status, 201, JSON.stringify(created.body));
     const id = created.body.data._id as string;
 
-    const updated = await supertest(app)
+    const updated = await request(app)
       .patch(`/blocklists/${id}`)
       .set("Authorization", ownerAuth)
       .send({domains: ["https://Reddit.com/r/all", "x.com"], name: "Updated"});
@@ -98,34 +98,28 @@ describe("blocklists", () => {
     assert.deepEqual(updated.body.data.domains, ["reddit.com", "x.com"]);
     assert.equal(updated.body.data.name, "Updated");
 
-    const foreignUpdate = await supertest(app)
+    const foreignUpdate = await request(app)
       .patch(`/blocklists/${id}`)
       .set("Authorization", otherAuth)
       .send({name: "Stolen"});
     assert.oneOf(foreignUpdate.status, [403, 404]);
 
-    const foreignList = await supertest(app).get("/blocklists").set("Authorization", otherAuth);
+    const foreignList = await request(app).get("/blocklists").set("Authorization", otherAuth);
     assert.equal(foreignList.status, 200);
     assert.lengthOf(foreignList.body.data, 0);
 
-    const foreignRead = await supertest(app)
-      .get(`/blocklists/${id}`)
-      .set("Authorization", otherAuth);
+    const foreignRead = await request(app).get(`/blocklists/${id}`).set("Authorization", otherAuth);
     assert.oneOf(foreignRead.status, [403, 404]);
 
-    const foreignDelete = await supertest(app)
+    const foreignDelete = await request(app)
       .delete(`/blocklists/${id}`)
       .set("Authorization", otherAuth);
     assert.oneOf(foreignDelete.status, [403, 404]);
 
-    const deleted = await supertest(app)
-      .delete(`/blocklists/${id}`)
-      .set("Authorization", ownerAuth);
+    const deleted = await request(app).delete(`/blocklists/${id}`).set("Authorization", ownerAuth);
     assert.equal(deleted.status, 204, JSON.stringify(deleted.body));
 
-    const readDeleted = await supertest(app)
-      .get(`/blocklists/${id}`)
-      .set("Authorization", ownerAuth);
+    const readDeleted = await request(app).get(`/blocklists/${id}`).set("Authorization", ownerAuth);
     assert.oneOf(readDeleted.status, [403, 404]);
   });
 
@@ -133,7 +127,7 @@ describe("blocklists", () => {
     const user = await createUser("blocklist-starter");
     const auth = await authHeader(user);
 
-    const seeded = await supertest(app).post("/blocklists/starter").set("Authorization", auth);
+    const seeded = await request(app).post("/blocklists/starter").set("Authorization", auth);
     assert.equal(seeded.status, 200, JSON.stringify(seeded.body));
     assert.sameMembers(
       seeded.body.data.map((blocklist: {name: string}) => blocklist.name),
@@ -154,7 +148,7 @@ describe("blocklists", () => {
       "reddit.com",
     ]);
 
-    const again = await supertest(app).post("/blocklists/starter").set("Authorization", auth);
+    const again = await request(app).post("/blocklists/starter").set("Authorization", auth);
     assert.equal(again.status, 200, JSON.stringify(again.body));
     assert.lengthOf(again.body.data, 3);
     assert.sameMembers(
@@ -162,18 +156,18 @@ describe("blocklists", () => {
       seeded.body.data.map((blocklist: {_id: string}) => blocklist._id)
     );
 
-    const renamed = await supertest(app)
+    const renamed = await request(app)
       .patch(`/blocklists/${seeded.body.data[0]._id}`)
       .set("Authorization", auth)
       .send({name: "My social"});
     assert.equal(renamed.status, 200, JSON.stringify(renamed.body));
 
-    const deleted = await supertest(app)
+    const deleted = await request(app)
       .delete(`/blocklists/${seeded.body.data[1]._id}`)
       .set("Authorization", auth);
     assert.equal(deleted.status, 204, JSON.stringify(deleted.body));
 
-    const afterEdit = await supertest(app).post("/blocklists/starter").set("Authorization", auth);
+    const afterEdit = await request(app).post("/blocklists/starter").set("Authorization", auth);
     assert.equal(afterEdit.status, 200, JSON.stringify(afterEdit.body));
     assert.lengthOf(afterEdit.body.data, 2);
     assert.include(
@@ -191,7 +185,7 @@ describe("blocklists", () => {
     const other = await createUser("blocklist-sync-other");
     const auth = await authHeader(user);
     const otherAuth = await authHeader(other);
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: ["x.com"], name: "Sync safe"});
@@ -199,7 +193,7 @@ describe("blocklists", () => {
     const blocklist = created.body.data;
 
     const forgedId = "000000000000000000000abc";
-    const createdViaSync = await supertest(app)
+    const createdViaSync = await request(app)
       .post("/sync/mutate")
       .set("Authorization", auth)
       .send({
@@ -215,15 +209,13 @@ describe("blocklists", () => {
         operation: "create",
       });
     assert.equal(createdViaSync.status, 200, JSON.stringify(createdViaSync.body));
-    const readForged = await supertest(app)
-      .get(`/blocklists/${forgedId}`)
-      .set("Authorization", auth);
+    const readForged = await request(app).get(`/blocklists/${forgedId}`).set("Authorization", auth);
     assert.equal(readForged.status, 200, JSON.stringify(readForged.body));
     assert.equal(readForged.body.data.ownerId, String(user._id));
     assert.equal(readForged.body.data.source, "user");
     assert.deepEqual(readForged.body.data.domains, ["reddit.com"]);
 
-    const updatedViaSync = await supertest(app)
+    const updatedViaSync = await request(app)
       .post("/sync/mutate")
       .set("Authorization", auth)
       .send({
@@ -235,13 +227,13 @@ describe("blocklists", () => {
         operation: "update",
       });
     assert.equal(updatedViaSync.status, 200, JSON.stringify(updatedViaSync.body));
-    const readUpdated = await supertest(app)
+    const readUpdated = await request(app)
       .get(`/blocklists/${blocklist._id}`)
       .set("Authorization", auth);
     assert.deepEqual(readUpdated.body.data.domains, ["news.ycombinator.com"]);
     assert.equal(readUpdated.body.data.source, "user");
 
-    const forgedOwner = await supertest(app)
+    const forgedOwner = await request(app)
       .post("/sync/mutate")
       .set("Authorization", auth)
       .send({
@@ -257,12 +249,12 @@ describe("blocklists", () => {
         operation: "create",
       });
     assert.equal(forgedOwner.status, 403, JSON.stringify(forgedOwner.body));
-    const foreignRead = await supertest(app)
+    const foreignRead = await request(app)
       .get("/blocklists/000000000000000000000def")
       .set("Authorization", otherAuth);
     assert.oneOf(foreignRead.status, [403, 404]);
 
-    const removed = await supertest(app).post("/sync/mutate").set("Authorization", auth).send({
+    const removed = await request(app).post("/sync/mutate").set("Authorization", auth).send({
       baseVersion: blocklist._syncSeq,
       collection: "blocklists",
       id: blocklist._id,
@@ -271,7 +263,7 @@ describe("blocklists", () => {
     });
     assert.equal(removed.status, 200, JSON.stringify(removed.body));
 
-    const readDeleted = await supertest(app)
+    const readDeleted = await request(app)
       .get(`/blocklists/${blocklist._id}`)
       .set("Authorization", auth);
     assert.oneOf(readDeleted.status, [403, 404]);
@@ -281,21 +273,21 @@ describe("blocklists", () => {
     const owner = await createUser("blocklist-stream-owner");
     const ownerAuth = await authHeader(owner);
     const otherAuth = await authHeader(await createUser("blocklist-stream-other"));
-    const created = await supertest(app)
+    const created = await request(app)
       .post("/blocklists")
       .set("Authorization", ownerAuth)
       .send({domains: ["x.com"], name: "Streamed"});
     assert.equal(created.status, 201, JSON.stringify(created.body));
     const stream = `blocklists|owner:${String(owner._id)}`;
 
-    const snapshot = await supertest(app)
+    const snapshot = await request(app)
       .get("/sync/snapshot")
       .query({collection: "blocklists", stream})
       .set("Authorization", ownerAuth);
     assert.equal(snapshot.status, 200, JSON.stringify(snapshot.body));
     assert.include(JSON.stringify(snapshot.body), created.body.data._id);
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .get("/sync/snapshot")
       .query({collection: "blocklists", stream})
       .set("Authorization", otherAuth);

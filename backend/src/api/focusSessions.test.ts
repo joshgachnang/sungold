@@ -1,9 +1,9 @@
 import {beforeAll, describe, it} from "bun:test";
 import {configureOpenApiValidator, generateTokens, TerrenoApp} from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
 import {ParkingLotItem} from "../models/parkingLotItem";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import type {UserDocument} from "../types/models/userTypes";
 import {blocklistRouter} from "./blocklists";
 import {focusSessionRouter} from "./focusSessions";
@@ -34,7 +34,7 @@ describe("focus sessions", () => {
 
   it("starts an active session owned by the caller with normalized domains", async () => {
     const user = await createUser("owner");
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/focusSessions")
       .set("Authorization", await authHeader(user))
       .send({
@@ -54,16 +54,16 @@ describe("focus sessions", () => {
 
   it("starts from the caller's blocklists plus extra typed domains", async () => {
     const auth = await authHeader(await createUser("blocklist-start"));
-    const social = await supertest(app)
+    const social = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: ["x.com", "reddit.com"], name: "Social"});
-    const video = await supertest(app)
+    const video = await request(app)
       .post("/blocklists")
       .set("Authorization", auth)
       .send({domains: ["youtube.com", "reddit.com"], name: "Video"});
 
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({
@@ -85,12 +85,12 @@ describe("focus sessions", () => {
   it("rejects blocklist ids the caller does not own", async () => {
     const ownerAuth = await authHeader(await createUser("blocklist-owner"));
     const otherAuth = await authHeader(await createUser("blocklist-other"));
-    const otherList = await supertest(app)
+    const otherList = await request(app)
       .post("/blocklists")
       .set("Authorization", otherAuth)
       .send({domains: ["example.com"], name: "Other"});
 
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", ownerAuth)
       .send({blockedDomains: ["x.com"], blocklistIds: [otherList.body.data._id]});
@@ -100,13 +100,13 @@ describe("focus sessions", () => {
 
   it("rejects a session with no domains or an invalid domain", async () => {
     const auth = await authHeader(await createUser("invalid"));
-    const empty = await supertest(app)
+    const empty = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: []});
     assert.equal(empty.status, 400);
 
-    const bad = await supertest(app)
+    const bad = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["not a domain"]});
@@ -116,7 +116,7 @@ describe("focus sessions", () => {
   it("ignores client-supplied owner and status", async () => {
     const user = await createUser("spoof");
     const other = await createUser("victim");
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/focusSessions")
       .set("Authorization", await authHeader(user))
       .send({blockedDomains: ["x.com"], ownerId: String(other._id), status: "ended"});
@@ -129,13 +129,13 @@ describe("focus sessions", () => {
 
   it("allows only one active session per user", async () => {
     const auth = await authHeader(await createUser("single"));
-    const first = await supertest(app)
+    const first = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
     assert.equal(first.status, 201);
 
-    const second = await supertest(app)
+    const second = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["reddit.com"]});
@@ -144,21 +144,21 @@ describe("focus sessions", () => {
 
   it("ends a session and then allows a new one", async () => {
     const auth = await authHeader(await createUser("ender"));
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
     const id = started.body.data._id as string;
 
-    const ended = await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    const ended = await request(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
     assert.equal(ended.status, 200, JSON.stringify(ended.body));
     assert.equal(ended.body.data.status, "ended");
     assert.isString(ended.body.data.endedAt);
 
-    const again = await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    const again = await request(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
     assert.equal(again.status, 409);
 
-    const next = await supertest(app)
+    const next = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["reddit.com"]});
@@ -168,7 +168,7 @@ describe("focus sessions", () => {
   it("reviews an ended session once and carries open parking lot items forward", async () => {
     const user = await createUser("review-owner");
     const auth = await authHeader(user);
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"], intention: "Write the review flow"});
@@ -183,9 +183,9 @@ describe("focus sessions", () => {
       sessionId: id,
       text: "Ask about the next block",
     });
-    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    await request(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
 
-    const reviewed = await supertest(app)
+    const reviewed = await request(app)
       .post(`/focusSessions/${id}/review`)
       .set("Authorization", auth)
       .send({
@@ -209,7 +209,7 @@ describe("focus sessions", () => {
     assert.equal(openCarriedItem?.status, "open");
     assert.isUndefined(openCarriedItem?.resolvedAt);
 
-    const again = await supertest(app)
+    const again = await request(app)
       .post(`/focusSessions/${id}/review`)
       .set("Authorization", auth)
       .send({done: "Again", items: [], note: ""});
@@ -219,7 +219,7 @@ describe("focus sessions", () => {
   it("only lets a review resolve open items that existed while the session ran", async () => {
     const user = await createUser("review-scope");
     const auth = await authHeader(user);
-    const first = await supertest(app)
+    const first = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
@@ -236,10 +236,10 @@ describe("focus sessions", () => {
       status: "done",
       text: "Finished thought",
     });
-    await supertest(app).post(`/focusSessions/${firstId}/end`).set("Authorization", auth);
+    await request(app).post(`/focusSessions/${firstId}/end`).set("Authorization", auth);
 
     // A thought parked in a later session is not part of the first session's review.
-    const second = await supertest(app)
+    const second = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
@@ -249,13 +249,13 @@ describe("focus sessions", () => {
       text: "Newer thought",
     });
 
-    const touchesLater = await supertest(app)
+    const touchesLater = await request(app)
       .post(`/focusSessions/${firstId}/review`)
       .set("Authorization", auth)
       .send({done: "", items: [{id: later._id, status: "dismissed"}], note: ""});
     assert.equal(touchesLater.status, 400, JSON.stringify(touchesLater.body));
 
-    const reopensDone = await supertest(app)
+    const reopensDone = await request(app)
       .post(`/focusSessions/${firstId}/review`)
       .set("Authorization", auth)
       .send({done: "", items: [{id: alreadyDone._id, status: "open"}], note: ""});
@@ -264,7 +264,7 @@ describe("focus sessions", () => {
     // Rejected requests changed nothing, and the session can still be reviewed.
     assert.equal((await ParkingLotItem.findById(later._id).lean())?.status, "open");
     assert.equal((await ParkingLotItem.findById(alreadyDone._id).lean())?.status, "done");
-    const reviewed = await supertest(app)
+    const reviewed = await request(app)
       .post(`/focusSessions/${firstId}/review`)
       .set("Authorization", auth)
       .send({done: "Done", items: [{id: carriedIn._id, status: "done"}], note: ""});
@@ -275,25 +275,25 @@ describe("focus sessions", () => {
   it("accepts only one of two concurrent reviews of the same session", async () => {
     const user = await createUser("review-race");
     const auth = await authHeader(user);
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
     const id = started.body.data._id as string;
     const item = await ParkingLotItem.create({ownerId: user._id, sessionId: id, text: "Race item"});
-    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    await request(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
 
     const results = await Promise.all([
-      supertest(app)
+      request(app)
         .post(`/focusSessions/${id}/review`)
         .set("Authorization", auth)
         .send({done: "From the Mac", items: [{id: item._id, status: "done"}], note: ""}),
-      supertest(app).post(`/focusSessions/${id}/skipReview`).set("Authorization", auth),
+      request(app).post(`/focusSessions/${id}/skipReview`).set("Authorization", auth),
     ]);
     const statuses = results.map((res) => res.status).sort();
     assert.deepEqual(statuses, [200, 409], JSON.stringify(results.map((res) => res.body)));
 
-    const stored = await supertest(app).get(`/focusSessions/${id}`).set("Authorization", auth);
+    const stored = await request(app).get(`/focusSessions/${id}`).set("Authorization", auth);
     const reviewedAndSkipped =
       Boolean(stored.body.data.review?.reviewedAt) && Boolean(stored.body.data.reviewSkippedAt);
     assert.isFalse(reviewedAndSkipped);
@@ -309,31 +309,31 @@ describe("focus sessions", () => {
     const other = await createUser("review-invalid-other");
     const auth = await authHeader(user);
     const otherAuth = await authHeader(other);
-    const active = await supertest(app)
+    const active = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
     const id = active.body.data._id as string;
 
-    const activeReview = await supertest(app)
+    const activeReview = await request(app)
       .post(`/focusSessions/${id}/review`)
       .set("Authorization", auth)
       .send({done: "", items: [], note: ""});
     assert.equal(activeReview.status, 409);
 
-    await supertest(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
-    const foreignSkip = await supertest(app)
+    await request(app).post(`/focusSessions/${id}/end`).set("Authorization", auth);
+    const foreignSkip = await request(app)
       .post(`/focusSessions/${id}/skipReview`)
       .set("Authorization", otherAuth);
     assert.oneOf(foreignSkip.status, [403, 404]);
 
-    const skipped = await supertest(app)
+    const skipped = await request(app)
       .post(`/focusSessions/${id}/skipReview`)
       .set("Authorization", auth);
     assert.equal(skipped.status, 200, JSON.stringify(skipped.body));
     assert.isString(skipped.body.data.reviewSkippedAt);
 
-    const afterSkipReview = await supertest(app)
+    const afterSkipReview = await request(app)
       .post(`/focusSessions/${id}/review`)
       .set("Authorization", auth)
       .send({done: "Done", items: [], note: ""});
@@ -343,28 +343,26 @@ describe("focus sessions", () => {
   it("does not let another user read, list, end, or delete a session", async () => {
     const ownerAuth = await authHeader(await createUser("private-owner"));
     const otherAuth = await authHeader(await createUser("private-other"));
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", ownerAuth)
       .send({blockedDomains: ["x.com"]});
     const id = started.body.data._id as string;
 
-    const read = await supertest(app).get(`/focusSessions/${id}`).set("Authorization", otherAuth);
+    const read = await request(app).get(`/focusSessions/${id}`).set("Authorization", otherAuth);
     assert.oneOf(read.status, [403, 404]);
 
-    const list = await supertest(app).get("/focusSessions").set("Authorization", otherAuth);
+    const list = await request(app).get("/focusSessions").set("Authorization", otherAuth);
     assert.equal(list.status, 200);
     assert.lengthOf(list.body.data, 0);
 
-    const end = await supertest(app)
-      .post(`/focusSessions/${id}/end`)
-      .set("Authorization", otherAuth);
+    const end = await request(app).post(`/focusSessions/${id}/end`).set("Authorization", otherAuth);
     assert.oneOf(end.status, [403, 404]);
 
-    const del = await supertest(app).delete(`/focusSessions/${id}`).set("Authorization", otherAuth);
+    const del = await request(app).delete(`/focusSessions/${id}`).set("Authorization", otherAuth);
     assert.oneOf(del.status, [403, 404, 405]);
 
-    const ownerRead = await supertest(app)
+    const ownerRead = await request(app)
       .get(`/focusSessions/${id}`)
       .set("Authorization", ownerAuth);
     assert.equal(ownerRead.status, 200);
@@ -374,36 +372,36 @@ describe("focus sessions", () => {
   it("lets the owner update domains with the same normalization, but not other users", async () => {
     const ownerAuth = await authHeader(await createUser("update-owner"));
     const otherAuth = await authHeader(await createUser("update-other"));
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", ownerAuth)
       .send({blockedDomains: ["x.com"]});
     const id = started.body.data._id as string;
 
-    const updated = await supertest(app)
+    const updated = await request(app)
       .patch(`/focusSessions/${id}`)
       .set("Authorization", ownerAuth)
       .send({blockedDomains: ["https://Reddit.com/r/all", "x.com"]});
     assert.equal(updated.status, 200, JSON.stringify(updated.body));
     assert.deepEqual(updated.body.data.blockedDomains, ["reddit.com", "x.com"]);
 
-    const invalid = await supertest(app)
+    const invalid = await request(app)
       .patch(`/focusSessions/${id}`)
       .set("Authorization", ownerAuth)
       .send({blockedDomains: ["nope"]});
     assert.equal(invalid.status, 400);
 
-    const status = await supertest(app)
+    const status = await request(app)
       .patch(`/focusSessions/${id}`)
       .set("Authorization", ownerAuth)
       .send({status: "ended"});
     assert.oneOf(status.status, [200, 400]);
-    const afterStatus = await supertest(app)
+    const afterStatus = await request(app)
       .get(`/focusSessions/${id}`)
       .set("Authorization", ownerAuth);
     assert.equal(afterStatus.body.data.status, "active");
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .patch(`/focusSessions/${id}`)
       .set("Authorization", otherAuth)
       .send({blockedDomains: ["example.com"]});
@@ -412,24 +410,24 @@ describe("focus sessions", () => {
 
   it("does not let the owner delete or end a session through PATCH", async () => {
     const auth = await authHeader(await createUser("soft-delete"));
-    const started = await supertest(app)
+    const started = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
     const id = started.body.data._id as string;
 
-    await supertest(app)
+    await request(app)
       .patch(`/focusSessions/${id}`)
       .set("Authorization", auth)
       .send({deleted: true, endedAt: new Date().toISOString()});
 
-    const read = await supertest(app).get(`/focusSessions/${id}`).set("Authorization", auth);
+    const read = await request(app).get(`/focusSessions/${id}`).set("Authorization", auth);
     assert.equal(read.status, 200);
     assert.equal(read.body.data.status, "active");
     assert.isFalse(read.body.data.deleted);
     assert.isUndefined(read.body.data.endedAt);
 
-    const second = await supertest(app)
+    const second = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["reddit.com"]});
@@ -438,13 +436,13 @@ describe("focus sessions", () => {
 
   it("ignores server-controlled fields on create", async () => {
     const auth = await authHeader(await createUser("create-fields"));
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"], deleted: true});
     assert.oneOf(res.status, [201, 400]);
 
-    const list = await supertest(app).get("/focusSessions").set("Authorization", auth);
+    const list = await request(app).get("/focusSessions").set("Authorization", auth);
     for (const session of list.body.data) {
       assert.isFalse(session.deleted);
       assert.equal(session.status, "active");
@@ -458,7 +456,7 @@ describe("focus sessions", () => {
     const auth = await authHeader(await createUser("race"));
     const results = await Promise.all(
       ["a.com", "b.com", "c.com", "d.com"].map((domain) =>
-        supertest(app)
+        request(app)
           .post("/focusSessions")
           .set("Authorization", auth)
           .send({blockedDomains: [domain]})
@@ -469,7 +467,7 @@ describe("focus sessions", () => {
   });
 
   it("requires authentication", async () => {
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/focusSessions")
       .send({blockedDomains: ["x.com"]});
     assert.oneOf(res.status, [401, 403]);

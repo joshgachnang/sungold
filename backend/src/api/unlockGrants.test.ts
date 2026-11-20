@@ -2,8 +2,8 @@ import {beforeAll, beforeEach, describe, it} from "bun:test";
 import {createPublicKey, generateKeyPairSync, verify} from "node:crypto";
 import {configureOpenApiValidator, generateTokens, SyncApp, TerrenoApp} from "@terreno/api";
 import {assert} from "chai";
-import supertest from "supertest";
 import {User} from "../models/user";
+import {request} from "../tests/request";
 import type {UserDocument} from "../types/models/userTypes";
 import {focusSessionRouter} from "./focusSessions";
 import {unlockGrantRouter} from "./unlockGrants";
@@ -52,7 +52,7 @@ describe("unlock grants", () => {
   });
 
   const startSession = async (auth: string): Promise<string> => {
-    const res = await supertest(app)
+    const res = await request(app)
       .post("/focusSessions")
       .set("Authorization", auth)
       .send({blockedDomains: ["x.com"]});
@@ -66,14 +66,14 @@ describe("unlock grants", () => {
     const sessionId = await startSession(auth);
 
     const before = Date.now();
-    const res = await supertest(app)
+    const res = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 5, reason: "peek"});
     assert.equal(res.status, 200, JSON.stringify(res.body));
     const grant = res.body.data;
 
-    const keyRes = await supertest(app).get("/unlockGrants/publicKey");
+    const keyRes = await request(app).get("/unlockGrants/publicKey");
     assert.equal(keyRes.status, 200, JSON.stringify(keyRes.body));
     const {algorithm, publicKey} = keyRes.body.data;
     assert.equal(algorithm, "Ed25519");
@@ -94,12 +94,12 @@ describe("unlock grants", () => {
   it("detects a tampered payload", async () => {
     const auth = await authHeader(await createUser("tamper"));
     const sessionId = await startSession(auth);
-    const res = await supertest(app)
+    const res = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 5});
     const grant = res.body.data;
-    const keyRes = await supertest(app).get("/unlockGrants/publicKey");
+    const keyRes = await request(app).get("/unlockGrants/publicKey");
 
     const payload = JSON.parse(fromBase64Url(grant.payload).toString("utf8"));
     payload.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -111,7 +111,7 @@ describe("unlock grants", () => {
     const auth = await authHeader(await createUser("clamp"));
     const sessionId = await startSession(auth);
     const lifetime = async (minutes: unknown): Promise<number> => {
-      const res = await supertest(app)
+      const res = await request(app)
         .post(`/focusSessions/${sessionId}/grants`)
         .set("Authorization", auth)
         .send({minutes});
@@ -122,7 +122,7 @@ describe("unlock grants", () => {
     assert.equal(await lifetime(90), 30);
     assert.equal(await lifetime(0), 1);
 
-    const bad = await supertest(app)
+    const bad = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: "lots"});
@@ -134,14 +134,14 @@ describe("unlock grants", () => {
     const otherAuth = await authHeader(await createUser("ended-other"));
     const sessionId = await startSession(ownerAuth);
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", otherAuth)
       .send({minutes: 5});
     assert.oneOf(foreign.status, [403, 404]);
 
-    await supertest(app).post(`/focusSessions/${sessionId}/end`).set("Authorization", ownerAuth);
-    const ended = await supertest(app)
+    await request(app).post(`/focusSessions/${sessionId}/end`).set("Authorization", ownerAuth);
+    const ended = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", ownerAuth)
       .send({minutes: 5});
@@ -152,7 +152,7 @@ describe("unlock grants", () => {
     const auth = await authHeader(await createUser("no-key"));
     const sessionId = await startSession(auth);
     Reflect.deleteProperty(process.env, "GRANT_SIGNING_PRIVATE_KEY");
-    const res = await supertest(app)
+    const res = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 5});
@@ -170,27 +170,27 @@ describe("unlock grants", () => {
       process.env.GRANT_SIGNING_PRIVATE_KEY = key
         .export({format: "der", type: "pkcs8"})
         .toString("base64url");
-      const grant = await supertest(app)
+      const grant = await request(app)
         .post(`/focusSessions/${sessionId}/grants`)
         .set("Authorization", auth)
         .send({minutes: 5});
       assert.equal(grant.status, 500, key.asymmetricKeyType);
-      const publicKey = await supertest(app).get("/unlockGrants/publicKey");
+      const publicKey = await request(app).get("/unlockGrants/publicKey");
       assert.equal(publicKey.status, 500, key.asymmetricKeyType);
     }
     process.env.GRANT_SIGNING_PRIVATE_KEY = "not-a-key";
-    const garbage = await supertest(app).get("/unlockGrants/publicKey");
+    const garbage = await request(app).get("/unlockGrants/publicKey");
     assert.equal(garbage.status, 500);
 
     process.env.GRANT_SIGNING_PRIVATE_KEY = signingKey;
-    const list = await supertest(app).get("/unlockGrants").set("Authorization", auth);
+    const list = await request(app).get("/unlockGrants").set("Authorization", auth);
     assert.lengthOf(list.body.data, 0);
   });
 
   it("rounds fractional minutes", async () => {
     const auth = await authHeader(await createUser("round"));
     const sessionId = await startSession(auth);
-    const res = await supertest(app)
+    const res = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 2.6});
@@ -201,7 +201,7 @@ describe("unlock grants", () => {
   it("rejects grant writes over the sync channel", async () => {
     const auth = await authHeader(await createUser("sync-write"));
     const sessionId = await startSession(auth);
-    const issued = await supertest(app)
+    const issued = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 5});
@@ -232,17 +232,17 @@ describe("unlock grants", () => {
       {baseVersion: grant._syncSeq, collection: "unlockGrants", id: grant._id, operation: "delete"},
     ];
     for (const mutation of mutations) {
-      const res = await supertest(app)
+      const res = await request(app)
         .post("/sync/mutate")
         .set("Authorization", auth)
         .send({...mutation, mutationId: crypto.randomUUID()});
       assert.equal(res.status, 403, `${mutation.operation}: ${JSON.stringify(res.body)}`);
     }
 
-    const read = await supertest(app).get(`/unlockGrants/${grant._id}`).set("Authorization", auth);
+    const read = await request(app).get(`/unlockGrants/${grant._id}`).set("Authorization", auth);
     assert.equal(read.status, 200);
     assert.equal(read.body.data.expiresAt, grant.expiresAt);
-    const forged = await supertest(app).get(`/unlockGrants/${forgedId}`).set("Authorization", auth);
+    const forged = await request(app).get(`/unlockGrants/${forgedId}`).set("Authorization", auth);
     assert.notEqual(forged.status, 200);
   });
 
@@ -250,37 +250,35 @@ describe("unlock grants", () => {
     const ownerAuth = await authHeader(await createUser("direct-owner"));
     const otherAuth = await authHeader(await createUser("direct-other"));
     const sessionId = await startSession(ownerAuth);
-    const issued = await supertest(app)
+    const issued = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", ownerAuth)
       .send({minutes: 5});
     const grantId = issued.body.data._id as string;
 
-    const read = await supertest(app)
-      .get(`/unlockGrants/${grantId}`)
-      .set("Authorization", ownerAuth);
+    const read = await request(app).get(`/unlockGrants/${grantId}`).set("Authorization", ownerAuth);
     assert.equal(read.status, 200);
 
-    const foreignRead = await supertest(app)
+    const foreignRead = await request(app)
       .get(`/unlockGrants/${grantId}`)
       .set("Authorization", otherAuth);
     assert.oneOf(foreignRead.status, [403, 404]);
-    const foreignList = await supertest(app).get("/unlockGrants").set("Authorization", otherAuth);
+    const foreignList = await request(app).get("/unlockGrants").set("Authorization", otherAuth);
     assert.lengthOf(foreignList.body.data, 0);
 
-    const forged = await supertest(app)
+    const forged = await request(app)
       .post("/unlockGrants")
       .set("Authorization", ownerAuth)
       .send({expiresAt: new Date().toISOString(), sessionId});
     assert.oneOf(forged.status, [403, 405]);
 
-    const patched = await supertest(app)
+    const patched = await request(app)
       .patch(`/unlockGrants/${grantId}`)
       .set("Authorization", ownerAuth)
       .send({expiresAt: new Date(Date.now() + 86400000).toISOString()});
     assert.oneOf(patched.status, [403, 405]);
 
-    const deleted = await supertest(app)
+    const deleted = await request(app)
       .delete(`/unlockGrants/${grantId}`)
       .set("Authorization", ownerAuth);
     assert.oneOf(deleted.status, [403, 405]);
@@ -289,19 +287,17 @@ describe("unlock grants", () => {
   it("requires sign-in for everything except the public key", async () => {
     const auth = await authHeader(await createUser("anon-owner"));
     const sessionId = await startSession(auth);
-    const issued = await supertest(app)
+    const issued = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", auth)
       .send({minutes: 5});
     const grantId = issued.body.data._id as string;
 
-    const list = await supertest(app).get("/unlockGrants");
+    const list = await request(app).get("/unlockGrants");
     assert.oneOf(list.status, [401, 403, 405], "list");
-    const read = await supertest(app).get(`/unlockGrants/${grantId}`);
+    const read = await request(app).get(`/unlockGrants/${grantId}`);
     assert.oneOf(read.status, [401, 403, 405], "read");
-    const grant = await supertest(app)
-      .post(`/focusSessions/${sessionId}/grants`)
-      .send({minutes: 5});
+    const grant = await request(app).post(`/focusSessions/${sessionId}/grants`).send({minutes: 5});
     assert.oneOf(grant.status, [401, 403, 405], "grant");
   });
 
@@ -310,21 +306,21 @@ describe("unlock grants", () => {
     const ownerAuth = await authHeader(owner);
     const otherAuth = await authHeader(await createUser("sync-other"));
     const sessionId = await startSession(ownerAuth);
-    const issued = await supertest(app)
+    const issued = await request(app)
       .post(`/focusSessions/${sessionId}/grants`)
       .set("Authorization", ownerAuth)
       .send({minutes: 5});
     const grantId = issued.body.data._id as string;
     const stream = `unlockGrants|owner:${String(owner._id)}`;
 
-    const snapshot = await supertest(app)
+    const snapshot = await request(app)
       .get("/sync/snapshot")
       .query({collection: "unlockGrants", stream})
       .set("Authorization", ownerAuth);
     assert.equal(snapshot.status, 200, JSON.stringify(snapshot.body));
     assert.include(JSON.stringify(snapshot.body), grantId);
 
-    const foreign = await supertest(app)
+    const foreign = await request(app)
       .get("/sync/snapshot")
       .query({collection: "unlockGrants", stream})
       .set("Authorization", otherAuth);
